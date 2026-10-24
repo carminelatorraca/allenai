@@ -1,0 +1,81 @@
+.food-alt {
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px solid var(--ink-green-border);
+  border-radius: var(--ink-radius-sm);
+  background: var(--ink-green-soft);
+}
+
+.food-alt__header {
+  display: flex;
+  gap: 8px;
+}
+
+.food-alt__header input {
+  flex: 1;
+  min-width: 0;
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 1px solid var(--ink-border);
+  border-radius: 9px;
+  background: var(--ink-bg);
+  color: var(--ink-text);
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.food-alt__hint {
+  margin: 8px 0 0;
+  color: var(--ink-muted);
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+
+.food-alt__status {
+  margin: 10px 0 0;
+  color: var(--ink-muted);
+  font-size: 0.82rem;
+}
+
+.food-alt__list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.food-alt__item {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid var(--ink-border);
+  border-radius: 9px;
+  background: var(--ink-surface);
+  color: var(--ink-text);
+  text-align: left;
+}
+
+.food-alt__item:hover {
+  border-color: var(--ink-green);
+}
+
+.food-alt__item-name {
+  font-size: 0.85rem;
+  font-weight: 650;
+}
+
+.food-alt__item-name small {
+  color: var(--ink-muted);
+  font-weight: 500;
+}
+
+.food-alt__item-macros {
+  color: var(--ink-muted);
+  font-size: 0.76rem;
+}

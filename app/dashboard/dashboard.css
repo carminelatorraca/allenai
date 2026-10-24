@@ -1,0 +1,224 @@
+/* =========================================
+   AllenAI — Home (dashboard)
+   Tema chiaro, usa i token definiti in app-shell.css
+   ========================================= */
+
+.home-loading {
+  display: flex;
+  min-height: 60vh;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-muted);
+}
+
+.home-page {
+  display: flex;
+  flex-direction: column;
+  gap: 36px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.home-eyebrow {
+  margin: 0 0 8px;
+  color: var(--ink-green);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* ---------- Hero ---------- */
+
+.home-hero {
+  padding: 36px;
+  border: 1px solid var(--ink-border);
+  border-radius: var(--ink-radius-lg);
+  background: var(--ink-surface);
+  box-shadow: var(--ink-shadow);
+}
+
+.home-hero h1 {
+  margin: 0 0 12px;
+  font-size: clamp(1.7rem, 3.4vw, 2.5rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+
+.home-hero h1 span {
+  color: var(--ink-green);
+}
+
+.home-intro {
+  max-width: 560px;
+  margin: 0 0 22px;
+  color: var(--ink-muted);
+  font-size: 0.95rem;
+  line-height: 1.7;
+}
+
+.home-primary-cta {
+  display: inline-flex;
+  min-height: 46px;
+  align-items: center;
+  padding: 0 20px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--ink-green);
+  color: var(--ink-on-green);
+  font-size: 0.9rem;
+  font-weight: 750;
+  transition: background 150ms ease;
+}
+
+.home-primary-cta:hover {
+  background: var(--ink-green-dark);
+}
+
+/* ---------- Sezioni ---------- */
+
+.home-section-heading {
+  margin-bottom: 18px;
+}
+
+.home-section-heading h2 {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 760;
+  letter-spacing: -0.02em;
+}
+
+/* ---------- Card principali ---------- */
+
+.home-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.home-card {
+  display: flex;
+  flex-direction: column;
+  padding: 24px;
+  border: 1px solid var(--ink-border);
+  border-radius: var(--ink-radius-lg);
+  background: var(--ink-surface);
+  box-shadow: var(--ink-shadow);
+  cursor: pointer;
+  transition: transform 150ms ease, border-color 150ms ease;
+}
+
+.home-card:hover {
+  border-color: var(--ink-green-border);
+  transform: translateY(-2px);
+}
+
+.home-card-icon {
+  display: inline-flex;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 14px;
+  border-radius: 12px;
+  background: var(--ink-green-soft);
+  color: var(--ink-green);
+}
+
+.home-card-category {
+  color: var(--ink-green);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.home-card h3 {
+  margin: 8px 0 6px;
+  font-size: 1.1rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+
+.home-card p {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+
+.home-card-cta {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--ink-border);
+  color: var(--ink-green);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+/* ---------- Card secondarie ---------- */
+
+.home-secondary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.home-secondary-card {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--ink-border);
+  border-radius: var(--ink-radius-md);
+  background: var(--ink-surface);
+  text-align: left;
+  transition: border-color 150ms ease, transform 150ms ease;
+}
+
+.home-secondary-card:hover {
+  border-color: var(--ink-green-border);
+  transform: translateY(-2px);
+}
+
+.home-secondary-icon {
+  display: inline-flex;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: var(--ink-surface-soft);
+  color: var(--ink-green);
+}
+
+.home-secondary-content {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.home-secondary-content strong {
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.home-secondary-content > span {
+  color: var(--ink-muted);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+@media (max-width: 760px) {
+  .home-grid,
+  .home-secondary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .home-hero {
+    padding: 24px;
+  }
+}

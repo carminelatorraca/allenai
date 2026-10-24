@@ -1,0 +1,295 @@
+.nplan-page {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.nplan-hero {
+  max-width: 720px;
+  margin-bottom: 28px;
+}
+
+.nplan-eyebrow {
+  margin: 0 0 8px;
+  color: var(--ink-green);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.nplan-hero h1 {
+  margin: 0 0 10px;
+  font-size: clamp(1.7rem, 3.6vw, 2.4rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.nplan-hero h1 span {
+  color: var(--ink-green);
+}
+
+.nplan-hero p {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: 0.92rem;
+  line-height: 1.65;
+}
+
+.nplan-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.nplan-section-heading h2 {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 760;
+}
+
+.nplan-section-heading p {
+  margin: 4px 0 0;
+  color: var(--ink-muted);
+  font-size: 0.82rem;
+}
+
+.nplan-primary,
+.nplan-secondary,
+.nplan-danger {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 18px;
+  border-radius: 11px;
+  font-size: 0.86rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.nplan-primary {
+  border: 0;
+  background: var(--ink-green);
+  color: var(--ink-on-green);
+}
+
+.nplan-primary:hover {
+  background: var(--ink-green-dark);
+}
+
+.nplan-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.nplan-secondary {
+  border: 1px solid var(--ink-border);
+  background: var(--ink-surface);
+  color: var(--ink-text);
+}
+
+.nplan-secondary:hover {
+  border-color: var(--ink-green-border);
+}
+
+.nplan-danger {
+  border: 1px solid var(--ink-red-border);
+  background: var(--ink-red-soft);
+  color: var(--ink-red);
+}
+
+.nplan-danger:hover {
+  background: var(--ink-red-soft);
+}
+
+.nplan-error,
+.nplan-notice {
+  margin: 0 0 18px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+
+.nplan-error {
+  border: 1px solid var(--ink-red-border);
+  background: var(--ink-red-soft);
+  color: var(--ink-red);
+}
+
+.nplan-notice {
+  border: 1px solid var(--ink-green-border);
+  background: var(--ink-green-soft);
+  color: var(--ink-green);
+}
+
+.nplan-loading {
+  color: var(--ink-muted);
+}
+
+.nplan-empty {
+  padding: 40px 24px;
+  border: 1px dashed var(--ink-border);
+  border-radius: var(--ink-radius-lg);
+  background: var(--ink-surface-soft);
+  text-align: center;
+}
+
+.nplan-empty h3 {
+  margin: 0 0 8px;
+}
+
+.nplan-empty p {
+  margin: 0;
+  color: var(--ink-muted);
+}
+
+.nplan-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.nplan-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid var(--ink-border);
+  border-radius: var(--ink-radius-lg);
+  background: var(--ink-surface);
+  box-shadow: var(--ink-shadow);
+}
+
+.nplan-item-link {
+  min-width: 0;
+  flex: 1 1 260px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.nplan-item-link h3 {
+  margin: 0 0 6px;
+  font-size: 1.05rem;
+  font-weight: 750;
+}
+
+.nplan-item-link p {
+  margin: 2px 0;
+  color: var(--ink-muted);
+  font-size: 0.84rem;
+}
+
+.nplan-status {
+  display: inline-flex;
+  margin-top: 8px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--ink-green-soft);
+  color: var(--ink-green);
+  font-size: 0.7rem;
+  font-weight: 750;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.nplan-item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.nplan-inline-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--ink-muted);
+  font-size: 0.72rem;
+}
+
+.nplan-inline-label select {
+  min-height: 38px;
+  padding: 6px 10px;
+  border: 1px solid var(--ink-border);
+  border-radius: 9px;
+  background: var(--ink-surface);
+  color: var(--ink-text);
+  font: inherit;
+  font-size: 0.82rem;
+}
+
+/* ---------- Form ---------- */
+
+.nplan-form-panel {
+  margin-bottom: 24px;
+  padding: 22px;
+  border: 1px solid var(--ink-border);
+  border-radius: var(--ink-radius-lg);
+  background: var(--ink-surface);
+  box-shadow: var(--ink-shadow);
+}
+
+.nplan-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.nplan-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.85rem;
+  font-weight: 650;
+}
+
+.nplan-form input,
+.nplan-form select {
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--ink-border);
+  border-radius: 10px;
+  background: var(--ink-bg);
+  color: var(--ink-text);
+  font: inherit;
+}
+
+.nplan-form input:focus,
+.nplan-form select:focus {
+  border-color: var(--ink-green);
+  outline: none;
+}
+
+.nplan-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.nplan-field-help {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+@media (max-width: 560px) {
+  .nplan-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .nplan-item {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .nplan-item-actions {
+    justify-content: space-between;
+  }
+}

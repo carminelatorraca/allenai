@@ -1,0 +1,14 @@
+services:
+  trainlog:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - trainlog_node_modules:/app/node_modules
+      - trainlog_next_cache:/app/.next
+    command: npm run dev -- --hostname 0.0.0.0
+
+volumes:
+  trainlog_node_modules:
+  trainlog_next_cache:
