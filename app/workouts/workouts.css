@@ -698,7 +698,8 @@
 @media (max-width: 760px) {
   .workouts-set-row {
     grid-template-columns: 40px minmax(0, 1fr) minmax(0, 1fr);
-    gap: 9px;
+    column-gap: 14px;
+    row-gap: 9px;
   }
 
   .workouts-set-row > span:first-child {
@@ -778,7 +779,8 @@
 
   .workouts-set-row {
     grid-template-columns: 34px minmax(0, 1fr) minmax(0, 1fr);
-    gap: 7px;
+    column-gap: 11px;
+    row-gap: 8px;
     padding: 9px 7px;
   }
 
@@ -849,7 +851,7 @@
 .workouts-rest-timer {
   position: fixed;
   left: 50%;
-  bottom: 18px;
+  bottom: calc(18px + env(safe-area-inset-bottom));
   z-index: 40;
   display: flex;
   width: min(420px, calc(100% - 32px));
@@ -915,7 +917,7 @@
 
 @media (max-width: 540px) {
   .workouts-rest-timer {
-    bottom: 10px;
+    bottom: calc(10px + env(safe-area-inset-bottom));
     padding: 12px 14px;
   }
 }

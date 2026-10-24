@@ -70,7 +70,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <aside className="shell-sidebar">
         <Link href="/dashboard" className="shell-brand">
           <span className="shell-brand-mark" aria-hidden="true">
-            ▲
+            A
           </span>
           AllenAI
         </Link>

@@ -84,6 +84,30 @@ export function FootstepsIcon(props: IconProps) {
   );
 }
 
+export function TrashIcon(props: IconProps) {
+  return base(
+    <>
+      <path d="M4 7h16" />
+      <path d="M9 7V4.8a1.3 1.3 0 0 1 1.3-1.3h3.4A1.3 1.3 0 0 1 15 4.8V7" />
+      <path d="M6 7l1 13a2 2 0 0 0 2 1.9h6a2 2 0 0 0 2-1.9l1-13" />
+      <path d="M10 11v6M14 11v6" />
+    </>,
+    props,
+  );
+}
+
+export function TimerIcon(props: IconProps) {
+  return base(
+    <>
+      <path d="M10 2.5h4" />
+      <path d="M12 4.5v3" />
+      <circle cx="12" cy="14" r="8" />
+      <path d="M12 10v4l3 2" />
+    </>,
+    props,
+  );
+}
+
 export function ChartIcon(props: IconProps) {
   return base(
     <>

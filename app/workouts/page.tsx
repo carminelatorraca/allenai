@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import AppShell from "@/components/AppShell";
+import { TimerIcon, TrashIcon } from "@/components/icons";
 import "./workouts.css";
 
 type TrainingDay = {
@@ -1103,7 +1104,7 @@ export default function WorkoutsPage() {
                       className="workouts-timer-start"
                       onClick={() => startRestTimer(exercise.exercise_name, exercise.rest_seconds)}
                     >
-                      ⏱ Avvia recupero
+                      <TimerIcon size={14} /> Avvia recupero
                     </button>
                   </div>
 
@@ -1283,7 +1284,7 @@ export default function WorkoutsPage() {
                           aria-label="Elimina sessione"
                           title="Elimina sessione"
                         >
-                          {deletingSessionId === session.id ? "…" : "🗑"}
+                          {deletingSessionId === session.id ? "…" : <TrashIcon size={16} />}
                         </button>
                       </div>
                     );

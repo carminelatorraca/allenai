@@ -59,7 +59,7 @@
   flex: 0 0 232px;
   flex-direction: column;
   gap: 8px;
-  padding: 26px 18px;
+  padding: max(26px, env(safe-area-inset-top)) 18px 26px;
   background: var(--ink-sidebar);
   color: #f2f6f0;
 }
@@ -84,9 +84,10 @@
   align-items: center;
   justify-content: center;
   border-radius: 8px;
-  background: #8fe3a3;
-  color: #0e2015;
+  background: var(--ink-green);
+  color: var(--ink-on-green);
   font-size: 0.85rem;
+  font-weight: 800;
 }
 
 .shell-nav {
@@ -134,7 +135,7 @@
   height: 3px;
   margin-top: 12px;
   border-radius: 999px;
-  background: #8fe3a3;
+  background: var(--ink-green);
 }
 
 /* ---------- Main / topbar ---------- */
@@ -274,7 +275,7 @@
     flex-wrap: wrap;
     align-items: center;
     gap: 10px;
-    padding: 14px 16px;
+    padding: max(14px, env(safe-area-inset-top)) 16px 14px;
   }
 
   .shell-brand {
@@ -305,7 +306,7 @@
   }
 
   .shell-content {
-    padding: 18px 16px 40px;
+    padding: 18px 16px calc(40px + env(safe-area-inset-bottom));
   }
 
   .shell-topbar {
