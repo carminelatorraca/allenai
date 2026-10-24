@@ -3,7 +3,7 @@ import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 
 type StepsRequest = {
   date?: string;
-  steps?: number;
+  steps?: number | string;
 };
 
 export async function POST(request: NextRequest) {
@@ -28,15 +28,23 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const date = body.date;
-  const steps = body.steps;
+  // Alcuni client (es. Shortcuts) inviano date con orario incluso o numeri come stringa.
+  const dateMatch = typeof body.date === "string" ? body.date.match(/^\d{4}-\d{2}-\d{2}/) : null;
+  const date = dateMatch?.[0];
 
-  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+  if (!date) {
     return NextResponse.json(
       { error: "invalid_request", message: "Campo 'date' mancante o non in formato YYYY-MM-DD." },
       { status: 400 },
     );
   }
+
+  // I passi sono sempre un intero: ripulisce separatori delle migliaia o testo
+  // extra che alcuni client (es. Shortcuts con formattazione locale) possono aggiungere.
+  const steps =
+    typeof body.steps === "string"
+      ? Number.parseInt(body.steps.replace(/[^\d]/g, ""), 10)
+      : body.steps;
 
   if (typeof steps !== "number" || !Number.isFinite(steps) || steps < 0) {
     return NextResponse.json(
