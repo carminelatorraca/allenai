@@ -1070,18 +1070,27 @@ export default function PlanPage() {
                                     Non sono state trovate settimane per questo mesociclo.
                                 </p>
                             ) : (
-                                weeks.map((week) => (
-                                    <div className="plan-item" key={week.id}>
-                                        <div className="plan-panel-heading">
+                                weeks.map((week, weekIndex) => (
+                                    <details className="plan-item" key={week.id} open={weekIndex === 0}>
+                                        <summary className="plan-panel-heading">
                                             <h4>Settimana {week.week_number}</h4>
-                                            <button
-                                                type="button"
-                                                className="plan-primary"
-                                                onClick={() => openNewDay(week)}
-                                            >
-                                                + Giorno
-                                            </button>
-                                        </div>
+                                            <div className="plan-week-summary-actions">
+                                                <button
+                                                    type="button"
+                                                    className="plan-primary"
+                                                    onClick={(event) => {
+                                                        event.preventDefault();
+                                                        event.stopPropagation();
+                                                        openNewDay(week);
+                                                    }}
+                                                >
+                                                    + Giorno
+                                                </button>
+                                                <span className="plan-week-chevron" aria-hidden="true">
+                                                    ›
+                                                </span>
+                                            </div>
+                                        </summary>
 
                                         {days
                                             .filter((day) => day.week_id === week.id)
@@ -1113,7 +1122,7 @@ export default function PlanPage() {
                                                     </div>
                                                 </div>
                                             ))}
-                                    </div>
+                                    </details>
                                 ))
                             )}
                         </article>

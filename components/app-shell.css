@@ -72,6 +72,21 @@
   cursor: pointer;
 }
 
+/* Safari (soprattutto iOS) può rendere il controllo nativo di un
+   input[type=date] più largo del box dichiarato, sfondando il
+   contenitore. Forziamo il contenimento qui per tutta l'app. */
+.shell input[type="date"] {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.shell label:has(> input[type="date"]) {
+  min-width: 0;
+  overflow: hidden;
+}
+
 /* ---------- Sidebar ---------- */
 
 .shell-sidebar {

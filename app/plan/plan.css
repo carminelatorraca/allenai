@@ -330,6 +330,33 @@
   transition: border-color 160ms ease;
 }
 
+summary.plan-panel-heading {
+  justify-content: space-between;
+  cursor: pointer;
+  list-style: none;
+}
+
+summary.plan-panel-heading::-webkit-details-marker {
+  display: none;
+}
+
+.plan-week-summary-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.plan-week-chevron {
+  color: var(--plan-muted);
+  font-size: 1.3rem;
+  line-height: 1;
+  transition: transform 150ms ease;
+}
+
+.plan-item[open] .plan-week-chevron {
+  transform: rotate(90deg);
+}
+
 .plan-item:hover {
   border-color: var(--ink-green-border);
 }

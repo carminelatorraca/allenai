@@ -479,11 +479,14 @@ export default function MesocycleDetail({
           </p>
         </section>
       ) : (
-        weeks.map((week) => (
-          <section className="plan-detail__week" key={week.id}>
-            <h2 className="plan-detail__week-title">
+        weeks.map((week, weekIndex) => (
+          <details className="plan-detail__week" key={week.id} open={weekIndex === 0}>
+            <summary className="plan-detail__week-title">
               Settimana {week.week_number}
-            </h2>
+              <span className="plan-detail__week-chevron" aria-hidden="true">
+                ›
+              </span>
+            </summary>
 
             {week.notes && <p>{week.notes}</p>}
 
@@ -595,7 +598,7 @@ export default function MesocycleDetail({
                 ))}
               </div>
             )}
-          </section>
+          </details>
         ))
       )}
 

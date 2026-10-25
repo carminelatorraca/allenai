@@ -145,12 +145,19 @@
 .plan-detail__week-title {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
-  margin: 0 0 24px;
+  margin: 0;
   color: var(--detail-text);
   font-size: clamp(20px, 3vw, 25px);
   font-weight: 800;
   letter-spacing: -0.5px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.plan-detail__week-title::-webkit-details-marker {
+  display: none;
 }
 
 .plan-detail__week-title::before {
@@ -160,6 +167,22 @@
   border-radius: 99px;
   background: var(--detail-accent);
   content: "";
+}
+
+.plan-detail__week-chevron {
+  margin-left: auto;
+  color: var(--detail-muted);
+  font-size: 1.5rem;
+  line-height: 1;
+  transition: transform 150ms ease;
+}
+
+.plan-detail__week[open] > .plan-detail__week-title {
+  margin-bottom: 24px;
+}
+
+.plan-detail__week[open] .plan-detail__week-chevron {
+  transform: rotate(90deg);
 }
 
 /* GIORNI */

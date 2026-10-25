@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import AppShell from "@/components/AppShell";
 import { TimerIcon, TrashIcon } from "@/components/icons";
+import { estimateSessionCalories } from "@/lib/activity";
 import "./workouts.css";
 
 type TrainingDay = {
@@ -17,6 +18,8 @@ type TrainingDay = {
   mesocycle_name: string;
   mesocycle_id: string;
   activity_type?: string | null;
+  duration_minutes?: number | null;
+  intensity?: string | null;
 };
 
 type Prescription = {
@@ -42,6 +45,10 @@ type Session = {
   finished_at: string | null;
   created_at?: string | null;
   notes: string | null;
+  actual_duration_minutes?: number | null;
+  actual_distance_km?: number | null;
+  actual_intensity?: string | null;
+  actual_calories?: number | null;
 };
 
 type SessionExercise = {
@@ -145,6 +152,13 @@ export default function WorkoutsPage() {
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
+
+  const [cardioDuration, setCardioDuration] = useState("");
+  const [cardioDistance, setCardioDistance] = useState("");
+  const [cardioIntensity, setCardioIntensity] = useState("moderate");
+  const [cardioNotes, setCardioNotes] = useState("");
+  const [cardioSaving, setCardioSaving] = useState(false);
+  const [userWeight, setUserWeight] = useState<number | null>(null);
 
   const [restTimer, setRestTimer] = useState<{
     exerciseName: string;
@@ -298,7 +312,7 @@ export default function WorkoutsPage() {
 
     const { data: dayRows, error: dayError } = await supabase
       .from("mesocycle_days")
-      .select("id,week_id,title,day_code,sort_order,activity_type")
+      .select("id,week_id,title,day_code,sort_order,activity_type,duration_minutes,intensity")
       .eq("user_id", uid)
       .in("week_id", weeks.map((week) => week.id))
       .order("sort_order", { ascending: true });
@@ -319,6 +333,8 @@ export default function WorkoutsPage() {
           mesocycle_name: selectedMesocycle.name ?? "Mesociclo",
           mesocycle_id: selectedMesocycle.id,
           activity_type: day.activity_type,
+          duration_minutes: day.duration_minutes,
+          intensity: day.intensity,
         };
       })
       .sort(
@@ -390,6 +406,12 @@ export default function WorkoutsPage() {
       if (session.mesocycle_day_id) {
         setSelectedDay(session.mesocycle_day_id);
       }
+
+      const sessionDay = days.find((item) => item.id === session.mesocycle_day_id);
+      setCardioDuration(session.actual_duration_minutes?.toString() ?? "");
+      setCardioDistance(session.actual_distance_km?.toString() ?? "");
+      setCardioIntensity(session.actual_intensity ?? sessionDay?.intensity ?? "moderate");
+      setCardioNotes(session.notes ?? "");
     } catch (err) {
       showError(
         err instanceof Error ? err.message : "Impossibile aprire la sessione.",
@@ -416,6 +438,13 @@ export default function WorkoutsPage() {
         const uid = data.user.id;
         userIdRef.current = uid;
         setUserId(uid);
+
+        const { data: profileRow } = await supabase
+          .from("profiles")
+          .select("current_weight_kg")
+          .eq("id", uid)
+          .maybeSingle();
+        setUserWeight(profileRow?.current_weight_kg ?? null);
 
         await Promise.all([loadTrainingDays(uid), loadSessions(uid)]);
       } catch (err) {
@@ -578,6 +607,30 @@ export default function WorkoutsPage() {
       if (existing) {
         await openSession(existing as Session, userId);
         showSuccess("Sessione esistente riaperta.");
+        return;
+      }
+
+      if (day.activity_type && day.activity_type !== "gym") {
+        const { data: cardioSession, error: cardioError } = await supabase
+          .from("workout_sessions")
+          .insert({
+            user_id: userId,
+            mesocycle_day_id: selectedDay,
+            performed_at: trainingDate,
+            started_at: new Date().toISOString(),
+            title: day.title,
+            status: "in_progress",
+          })
+          .select("*")
+          .single();
+
+        if (cardioError || !cardioSession) {
+          throw new Error(cardioError?.message ?? "Impossibile avviare la sessione.");
+        }
+
+        await loadSessions(userId);
+        await openSession(cardioSession as Session, userId);
+        showSuccess("Sessione avviata.");
         return;
       }
 
@@ -943,6 +996,61 @@ export default function WorkoutsPage() {
     void saveSet(setId).catch(() => {});
   }
 
+  async function saveCardioLog() {
+    if (!userId || !activeSession) return;
+
+    setCardioSaving(true);
+    setErrorMessage("");
+    setSuccessMessage("");
+
+    try {
+      const sessionDay = days.find((item) => item.id === activeSession.mesocycle_day_id);
+      const activityType = sessionDay?.activity_type ?? "other";
+      const duration = cardioDuration.trim() === "" ? null : Number(cardioDuration);
+      const distance = cardioDistance.trim() === "" ? null : Number(cardioDistance);
+      const intensity = duration ? cardioIntensity : null;
+      const calories = userWeight
+        ? estimateSessionCalories(activityType, duration, intensity, userWeight)
+        : null;
+      const notes = cardioNotes.trim() || null;
+
+      const { error } = await supabase
+        .from("workout_sessions")
+        .update({
+          actual_duration_minutes: duration,
+          actual_distance_km: distance,
+          actual_intensity: intensity,
+          actual_calories: calories,
+          notes,
+          status: duration ? "completed" : "in_progress",
+          finished_at: duration ? new Date().toISOString() : null,
+        })
+        .eq("id", activeSession.id)
+        .eq("user_id", userId);
+
+      if (error) throw error;
+
+      const updated: Session = {
+        ...activeSession,
+        actual_duration_minutes: duration,
+        actual_distance_km: distance,
+        actual_intensity: intensity,
+        actual_calories: calories,
+        notes,
+        status: duration ? "completed" : "in_progress",
+      };
+
+      activeSessionRef.current = updated;
+      setActiveSession(updated);
+      await loadSessions(userId);
+      showSuccess("Sessione salvata.");
+    } catch (err) {
+      showError(err instanceof Error ? err.message : "Impossibile salvare la sessione.");
+    } finally {
+      setCardioSaving(false);
+    }
+  }
+
   async function closeSession() {
     if (busy) return;
 
@@ -1016,6 +1124,18 @@ export default function WorkoutsPage() {
   const totalSets = sets.length;
   const allSeriesComplete = totalSets > 0 && completedSets === totalSets;
 
+  const activeDay = days.find((item) => item.id === activeSession?.mesocycle_day_id);
+  const isCardioSession = Boolean(activeDay?.activity_type && activeDay.activity_type !== "gym");
+  const cardioCaloriesPreview =
+    userWeight && cardioDuration.trim() !== ""
+      ? estimateSessionCalories(
+          activeDay?.activity_type ?? "other",
+          Number(cardioDuration),
+          cardioIntensity,
+          userWeight,
+        )
+      : null;
+
   if (loading) {
     return (
       <AppShell>
@@ -1051,11 +1171,15 @@ export default function WorkoutsPage() {
             <div className="workouts-panel-heading">
               <div>
                 <p className="workouts-eyebrow">
-                  {allSeriesComplete
-                    ? "SESSIONE COMPLETATA"
-                    : completedSets > 0
-                      ? "SESSIONE PARZIALE"
-                      : "SESSIONE NON INIZIATA"}
+                  {isCardioSession
+                    ? activeSession.status === "completed"
+                      ? "SESSIONE COMPLETATA"
+                      : "SESSIONE NON INIZIATA"
+                    : allSeriesComplete
+                      ? "SESSIONE COMPLETATA"
+                      : completedSets > 0
+                        ? "SESSIONE PARZIALE"
+                        : "SESSIONE NON INIZIATA"}
                 </p>
                 <h2>{activeSession.title}</h2>
                 <p>{formatDate(activeSession.performed_at)}</p>
@@ -1070,6 +1194,86 @@ export default function WorkoutsPage() {
               </button>
             </div>
 
+            {isCardioSession ? (
+              <div className="workouts-cardio-log">
+                <p className="workouts-cardio-log__type">
+                  {activeDay?.activity_type === "swimming"
+                    ? "Nuoto"
+                    : activeDay?.activity_type === "running"
+                      ? "Corsa"
+                      : activeDay?.activity_type === "cycling"
+                        ? "Bici"
+                        : activeDay?.activity_type === "cardio"
+                          ? "Cardio"
+                          : "Attività"}
+                  {activeDay?.duration_minutes &&
+                    ` · programmati ${activeDay.duration_minutes} min${activeDay.intensity ? ` · intensità ${activeDay.intensity}` : ""}`}
+                </p>
+
+                <div className="workouts-cardio-log__grid">
+                  <label>
+                    Durata (minuti)
+                    <input
+                      type="number"
+                      min="0"
+                      step="5"
+                      value={cardioDuration}
+                      onChange={(event) => setCardioDuration(event.target.value)}
+                      placeholder={activeDay?.duration_minutes?.toString() ?? "Es. 45"}
+                    />
+                  </label>
+
+                  <label>
+                    Distanza (km, opzionale)
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      value={cardioDistance}
+                      onChange={(event) => setCardioDistance(event.target.value)}
+                    />
+                  </label>
+
+                  <label>
+                    Intensità percepita
+                    <select
+                      value={cardioIntensity}
+                      onChange={(event) => setCardioIntensity(event.target.value)}
+                    >
+                      <option value="low">Bassa</option>
+                      <option value="moderate">Moderata</option>
+                      <option value="high">Alta</option>
+                    </select>
+                  </label>
+                </div>
+
+                <label className="workouts-cardio-log__notes">
+                  Note
+                  <textarea
+                    value={cardioNotes}
+                    onChange={(event) => setCardioNotes(event.target.value)}
+                    placeholder="Sensazioni, percorso, vasche fatte..."
+                    rows={3}
+                  />
+                </label>
+
+                {cardioCaloriesPreview !== null && (
+                  <p className="workouts-cardio-log__hint">
+                    ≈ {cardioCaloriesPreview} kcal stimate per questa sessione.
+                  </p>
+                )}
+
+                <button
+                  type="button"
+                  className="workouts-button-primary"
+                  disabled={cardioSaving}
+                  onClick={() => void saveCardioLog()}
+                >
+                  {cardioSaving ? "Salvataggio…" : "Salva sessione"}
+                </button>
+              </div>
+            ) : (
+              <>
             <div className="workouts-progress-summary">
               <strong>{completedSets} / {totalSets}</strong>
               <span>serie con ripetizioni registrate</span>
@@ -1188,6 +1392,8 @@ export default function WorkoutsPage() {
                 </article>
               );
             })}
+              </>
+            )}
           </section>
         ) : (
           <>
