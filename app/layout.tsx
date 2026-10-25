@@ -22,12 +22,12 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     title: "AllenAI",
-    statusBarStyle: "black-translucent",
+    statusBarStyle: "default",
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#101510",
+  themeColor: "#f1f0f6",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
@@ -43,7 +43,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <Script id="theme-init" strategy="beforeInteractive">
           {`try {
             var theme = localStorage.getItem("allenai-theme");
-            if (theme === "light") document.documentElement.setAttribute("data-theme", "light");
+            if (theme === "dark") document.documentElement.setAttribute("data-theme", "dark");
           } catch (e) {}`}
         </Script>
         {children}

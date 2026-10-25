@@ -84,6 +84,15 @@ export function FootstepsIcon(props: IconProps) {
   );
 }
 
+export function PlusIcon(props: IconProps) {
+  return base(
+    <>
+      <path d="M12 5v14M5 12h14" />
+    </>,
+    props,
+  );
+}
+
 export function TrashIcon(props: IconProps) {
   return base(
     <>

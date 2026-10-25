@@ -12,6 +12,7 @@ import {
   DumbbellIcon,
   GridIcon,
   HomeIcon,
+  PlusIcon,
   UserIcon,
   UtensilsIcon,
 } from "./icons";
@@ -24,6 +25,14 @@ const NAV_ITEMS = [
   { href: "/workouts", label: "Allenamenti", icon: DumbbellIcon },
   { href: "/nutrition", label: "Alimentazione", icon: UtensilsIcon },
   { href: "/progress", label: "Progressi", icon: ChartIcon },
+  { href: "/profile", label: "Profilo", icon: UserIcon },
+];
+
+const BOTTOM_NAV_ITEMS = [
+  { href: "/dashboard", label: "Home", icon: HomeIcon },
+  { href: "/calendar", label: "Calendario", icon: CalendarIcon },
+  { href: "/nutrition", label: "Alimentazione", icon: PlusIcon, center: true },
+  { href: "/workouts", label: "Allenamenti", icon: DumbbellIcon },
   { href: "/profile", label: "Profilo", icon: UserIcon },
 ];
 
@@ -145,6 +154,37 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
         <main className="shell-content">{children}</main>
       </div>
+
+      <nav className="shell-bottom-nav" aria-label="Navigazione principale">
+        {BOTTOM_NAV_ITEMS.map((item) => {
+          const active = pathname === item.href || pathname?.startsWith(`${item.href}/`);
+          const Icon = item.icon;
+
+          if (item.center) {
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="shell-bottom-nav__center"
+                aria-label={item.label}
+              >
+                <Icon size={24} />
+              </Link>
+            );
+          }
+
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`shell-bottom-nav__item${active ? " shell-bottom-nav__item--active" : ""}`}
+            >
+              <Icon size={21} />
+              <span>{item.label}</span>
+            </Link>
+          );
+        })}
+      </nav>
     </div>
   );
 }

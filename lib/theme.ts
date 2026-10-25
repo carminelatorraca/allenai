@@ -5,8 +5,8 @@ export type Theme = "dark" | "light";
 const STORAGE_KEY = "allenai-theme";
 
 export function applyTheme(theme: Theme) {
-  if (theme === "light") {
-    document.documentElement.setAttribute("data-theme", "light");
+  if (theme === "dark") {
+    document.documentElement.setAttribute("data-theme", "dark");
   } else {
     document.documentElement.removeAttribute("data-theme");
   }
@@ -20,9 +20,9 @@ export function applyTheme(theme: Theme) {
 
 export function getStoredTheme(): Theme {
   try {
-    return localStorage.getItem(STORAGE_KEY) === "light" ? "light" : "dark";
+    return localStorage.getItem(STORAGE_KEY) === "dark" ? "dark" : "light";
   } catch {
-    return "dark";
+    return "light";
   }
 }
 
@@ -30,7 +30,7 @@ export function getStoredTheme(): Theme {
 export async function syncThemeFromProfile(userId: string) {
   const { data } = await supabase.from("profiles").select("theme").eq("id", userId).maybeSingle();
 
-  const remoteTheme: Theme = data?.theme === "light" ? "light" : "dark";
+  const remoteTheme: Theme = data?.theme === "dark" ? "dark" : "light";
   applyTheme(remoteTheme);
 }
 

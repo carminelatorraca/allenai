@@ -1,19 +1,43 @@
 /* =========================================
    AllenAI — Shell (sidebar + topbar)
-   Tema scuro originale
+   Tema chiaro (default) + tema scuro (opzionale)
    ========================================= */
 
 :root {
+  --ink-bg: #f1f0f6;
+  --ink-surface: #ffffff;
+  --ink-surface-soft: #f6f5fb;
+  --ink-border: #e7e6f0;
+  --ink-text: #15141f;
+  --ink-muted: #8d8c9a;
+  --ink-sidebar: #15291d;
+  --ink-sidebar-hover: rgba(255, 255, 255, 0.07);
+  --ink-sidebar-active: rgba(255, 255, 255, 0.1);
+  --ink-sidebar-border: rgba(255, 255, 255, 0.14);
+  --ink-green: #7cb342;
+  --ink-on-green: #ffffff;
+  --ink-green-dark: #5e9430;
+  --ink-green-soft: #edf6e2;
+  --ink-green-border: #cfe7ac;
+  --ink-amber: #c98a2c;
+  --ink-amber-soft: #fbead2;
+  --ink-amber-border: #f0dcb4;
+  --ink-red: #c2493f;
+  --ink-red-soft: #fbe6e3;
+  --ink-red-border: #eecbc7;
+  --ink-radius-lg: 20px;
+  --ink-radius-md: 14px;
+  --ink-radius-sm: 10px;
+  --ink-shadow: 0 1px 2px rgba(20, 20, 40, 0.04), 0 10px 30px rgba(20, 20, 40, 0.06);
+}
+
+:root[data-theme="dark"] {
   --ink-bg: #101510;
   --ink-surface: #1a211b;
   --ink-surface-soft: #212922;
   --ink-border: #30392e;
   --ink-text: #f4f7f0;
   --ink-muted: #a1afa1;
-  --ink-sidebar: #0d110d;
-  --ink-sidebar-hover: rgba(255, 255, 255, 0.06);
-  --ink-sidebar-active: rgba(255, 255, 255, 0.09);
-  --ink-sidebar-border: rgba(255, 255, 255, 0.12);
   --ink-green: #b8f36b;
   --ink-on-green: #15200e;
   --ink-green-dark: #1f2b17;
@@ -25,31 +49,7 @@
   --ink-red: #e2766b;
   --ink-red-soft: rgba(226, 118, 107, 0.14);
   --ink-red-border: rgba(226, 118, 107, 0.35);
-  --ink-radius-lg: 20px;
-  --ink-radius-md: 14px;
-  --ink-radius-sm: 10px;
   --ink-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 10px 30px rgba(0, 0, 0, 0.35);
-}
-
-:root[data-theme="light"] {
-  --ink-bg: #f3f6f1;
-  --ink-surface: #ffffff;
-  --ink-surface-soft: #eef2ea;
-  --ink-border: #e2e8dd;
-  --ink-text: #182218;
-  --ink-muted: #6c7a6a;
-  --ink-green: #2e6b45;
-  --ink-on-green: #ffffff;
-  --ink-green-dark: #1b3f28;
-  --ink-green-soft: #e3f3e6;
-  --ink-green-border: #bfe2c8;
-  --ink-amber: #c98a2c;
-  --ink-amber-soft: #fbead2;
-  --ink-amber-border: #f0dcb4;
-  --ink-red: #c2493f;
-  --ink-red-soft: #fbe6e3;
-  --ink-red-border: #eecbc7;
-  --ink-shadow: 0 1px 2px rgba(20, 30, 20, 0.04), 0 10px 30px rgba(20, 30, 20, 0.05);
 }
 
 .shell {
@@ -320,20 +320,6 @@
   }
 
   .shell-nav {
-    flex-direction: row;
-    flex-wrap: wrap;
-    width: 100%;
-    order: 3;
-  }
-
-  .shell-nav-item {
-    flex: 1 1 auto;
-    justify-content: center;
-    padding: 8px 10px;
-    font-size: 0.78rem;
-  }
-
-  .shell-nav-item svg {
     display: none;
   }
 
@@ -342,7 +328,7 @@
   }
 
   .shell-content {
-    padding: 18px 16px calc(40px + env(safe-area-inset-bottom));
+    padding: 18px 16px calc(96px + env(safe-area-inset-bottom));
   }
 
   .shell-topbar {
@@ -352,4 +338,64 @@
   .shell-account-name {
     display: none;
   }
+
+  .shell-bottom-nav {
+    display: flex;
+  }
+}
+
+/* ---------- Barra di navigazione inferiore (mobile) ---------- */
+
+.shell-bottom-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+  display: none;
+  align-items: flex-end;
+  justify-content: space-around;
+  padding: 8px 10px calc(10px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--ink-border);
+  background: var(--ink-surface);
+}
+
+.shell-bottom-nav__item {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 4px 2px;
+  color: var(--ink-muted);
+  font-size: 0.66rem;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.shell-bottom-nav__item span {
+  overflow: hidden;
+  max-width: 100%;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shell-bottom-nav__item--active {
+  color: var(--ink-text);
+}
+
+.shell-bottom-nav__center {
+  display: inline-flex;
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  margin-top: -26px;
+  border: 4px solid var(--ink-surface);
+  border-radius: 50%;
+  background: var(--ink-green);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.18);
+  color: var(--ink-on-green);
 }
