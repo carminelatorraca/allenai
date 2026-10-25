@@ -5,6 +5,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import AppShell from "@/components/AppShell";
+import { getStoredTheme, saveTheme, type Theme } from "@/lib/theme";
 import "./profile.css";
 
 type Profile = {
@@ -35,6 +36,7 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
 
+  const [theme, setThemeState] = useState<Theme>("dark");
   const [stepSyncToken, setStepSyncToken] = useState<string | null>(null);
   const [tokenBusy, setTokenBusy] = useState(false);
   const [tokenMessage, setTokenMessage] = useState("");
@@ -76,6 +78,7 @@ export default function ProfilePage() {
           activity_level: data.activity_level ?? "",
         });
         setStepSyncToken((data as { step_sync_token?: string | null }).step_sync_token ?? null);
+        setThemeState((data as { theme?: string | null }).theme === "light" ? "light" : "dark");
       }
 
       setLoading(false);
@@ -86,7 +89,16 @@ export default function ProfilePage() {
 
   useEffect(() => {
     setOrigin(window.location.origin);
+    setThemeState(getStoredTheme());
   }, []);
+
+  async function toggleTheme(next: Theme) {
+    setThemeState(next);
+
+    const { data: sessionData } = await supabase.auth.getSession();
+    const userId = sessionData.session?.user.id;
+    if (userId) await saveTheme(userId, next);
+  }
 
   async function generateStepSyncToken() {
     setTokenBusy(true);
@@ -382,6 +394,31 @@ export default function ProfilePage() {
             </p>
           )}
         </form>
+
+        <section className="profile-integration">
+          <p className="profile-eyebrow">ASPETTO</p>
+          <h2>Tema</h2>
+          <p className="profile-description">
+            Scegli come preferisci vedere l&apos;app. La scelta resta salvata sul tuo account.
+          </p>
+
+          <div className="profile-theme-toggle">
+            <button
+              type="button"
+              className={theme === "dark" ? "profile-theme-option profile-theme-option--active" : "profile-theme-option"}
+              onClick={() => void toggleTheme("dark")}
+            >
+              Scuro
+            </button>
+            <button
+              type="button"
+              className={theme === "light" ? "profile-theme-option profile-theme-option--active" : "profile-theme-option"}
+              onClick={() => void toggleTheme("light")}
+            >
+              Chiaro
+            </button>
+          </div>
+        </section>
 
         <section className="profile-integration">
           <p className="profile-eyebrow">INTEGRAZIONI</p>

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { syncThemeFromProfile } from "@/lib/theme";
 import {
   BellIcon,
   CalendarIcon,
@@ -45,6 +46,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     supabase.auth.getSession().then(({ data }) => {
       if (!active) return;
       setEmail(data.session?.user.email ?? "");
+      if (data.session?.user.id) void syncThemeFromProfile(data.session.user.id);
     });
 
     const {
