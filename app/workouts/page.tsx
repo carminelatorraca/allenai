@@ -1070,9 +1070,14 @@ export default function WorkoutsPage() {
               </button>
             </div>
 
-            <div className="workouts-progress">
+            <div className="workouts-progress-summary">
               <strong>{completedSets} / {totalSets}</strong>
               <span>serie con ripetizioni registrate</span>
+            </div>
+            <div className="workouts-progress-bar">
+              <div
+                style={{ width: `${totalSets > 0 ? (completedSets / totalSets) * 100 : 0}%` }}
+              />
             </div>
 
             <p className="workouts-autosave-note" aria-live="polite">

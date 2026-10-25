@@ -215,27 +215,37 @@
   opacity: 0.55;
 }
 
-.workouts-progress {
+.workouts-progress-summary {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 0 9px;
+}
+
+.workouts-progress-summary strong {
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.workouts-progress-summary span {
+  color: var(--workout-muted);
+  font-size: 0.82rem;
+}
+
+.workouts-progress-bar {
   position: relative;
   height: 7px;
-  margin: 0 0 11px;
+  margin: 0 0 22px;
   overflow: hidden;
   border-radius: 999px;
   background: var(--ink-bg);
 }
 
-.workouts-progress > div {
+.workouts-progress-bar > div {
   height: 100%;
   border-radius: inherit;
   background: var(--workout-green);
   transition: width 200ms ease;
-}
-
-.workouts-progress + p {
-  margin: 0 0 22px;
-  color: var(--workout-muted);
-  font-size: 0.8rem;
-  line-height: 1.5;
 }
 
 .workouts-autosave-note {
@@ -340,7 +350,7 @@
   min-width: 0;
 }
 
-.workouts-set-row > span:first-child {
+.workouts-set-row > strong:first-child {
   color: var(--workout-muted);
   font-size: 0.8rem;
   font-weight: 750;
@@ -398,12 +408,14 @@
 
 .workouts-form {
   display: flex;
+  min-width: 0;
   flex-direction: column;
   gap: 20px;
 }
 
 .workouts-form label {
   display: flex;
+  min-width: 0;
   flex-direction: column;
   gap: 8px;
   color: var(--workout-text);
@@ -413,7 +425,10 @@
 
 .workouts-form input,
 .workouts-form select {
+  box-sizing: border-box;
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
   min-height: 46px;
   padding: 11px 13px;
   border: 1px solid var(--workout-border);
@@ -697,21 +712,41 @@
 
 @media (max-width: 760px) {
   .workouts-set-row {
-    grid-template-columns: 40px minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      "serie serie"
+      "reps kg"
+      "rpe status";
     column-gap: 14px;
-    row-gap: 9px;
+    row-gap: 12px;
+    padding: 14px;
   }
 
-  .workouts-set-row > span:first-child {
-    grid-row: span 2;
+  .workouts-set-row > strong:first-child {
+    grid-area: serie;
+    font-size: 0.86rem;
   }
 
-  .workouts-set-row input:nth-of-type(3) {
-    grid-column: 2;
+  .workouts-set-row > label:nth-of-type(1) {
+    grid-area: reps;
+  }
+
+  .workouts-set-row > label:nth-of-type(2) {
+    grid-area: kg;
+  }
+
+  .workouts-set-row > label:nth-of-type(3) {
+    grid-area: rpe;
+  }
+
+  .workouts-set-row input {
+    min-height: 44px;
+    font-size: 0.95rem;
   }
 
   .workouts-save-status {
-    grid-column: 3;
+    grid-area: status;
+    align-self: center;
     justify-content: flex-start;
     text-align: left;
   }
@@ -778,20 +813,19 @@
   }
 
   .workouts-set-row {
-    grid-template-columns: 34px minmax(0, 1fr) minmax(0, 1fr);
     column-gap: 11px;
-    row-gap: 8px;
-    padding: 9px 7px;
+    row-gap: 10px;
+    padding: 12px 10px;
   }
 
   .workouts-set-row input {
-    min-height: 39px;
-    padding: 8px 7px;
-    font-size: 0.85rem;
+    min-height: 42px;
+    padding: 8px 9px;
+    font-size: 0.9rem;
   }
 
-  .workouts-set-row > span:first-child {
-    font-size: 0.75rem;
+  .workouts-set-row > strong:first-child {
+    font-size: 0.8rem;
   }
 
   .workouts-save-status {
