@@ -125,6 +125,69 @@ async function parseAiResponse(
   }
 }
 
+/**
+ * I modelli gratuiti (es. Gemini Flash) possono rispondere "503 high demand"
+ * in modo intermittente. Con 7 richieste in sequenza, basta un solo errore
+ * transitorio per far fallire l'intera generazione: riprova prima di
+ * arrendersi.
+ */
+function isTransientAiError(message: string): boolean {
+  return /503|UNAVAILABLE|high demand|sovraccaric|overloaded/i.test(message);
+}
+
+async function generateDayWithRetry(
+  weekday: number,
+  payload: Record<string, unknown>,
+  onProgress: (message: string) => void,
+): Promise<ExtractedMeal[]> {
+  const maxAttempts = 3;
+  let lastError: Error | null = null;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    onProgress(
+      attempt === 1
+        ? `Genero ${WEEKDAY_LABEL[weekday]} (${weekday + 1} di 7)...`
+        : `${WEEKDAY_LABEL[weekday]}: il modello AI è sovraccarico, riprovo (tentativo ${attempt}/${maxAttempts})...`,
+    );
+
+    if (attempt > 1) {
+      await new Promise((resolve) => setTimeout(resolve, 2500 * attempt));
+    }
+
+    try {
+      const response = await fetch("/api/nutrition/generate-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await parseAiResponse(response);
+
+      if (!response.ok) {
+        const message = data.message ?? "impossibile generare il giorno.";
+        if (attempt < maxAttempts && isTransientAiError(message)) {
+          lastError = new Error(message);
+          continue;
+        }
+        throw new Error(`${WEEKDAY_LABEL[weekday]}: ${message}`);
+      }
+
+      return data.meals ?? [];
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+
+      if (attempt < maxAttempts && isTransientAiError(message)) {
+        lastError = err instanceof Error ? err : new Error(message);
+        continue;
+      }
+
+      throw err;
+    }
+  }
+
+  throw lastError ?? new Error(`${WEEKDAY_LABEL[weekday]}: impossibile generare il giorno.`);
+}
+
 function parseNonNegative(value: string): number | null {
   if (value.trim() === "") return 0;
   const parsed = Number(value);
@@ -333,21 +396,36 @@ export default function PlanDetail({ planId }: { planId: string }) {
     setNotice("");
 
     try {
-      const formData = new FormData();
-      formData.append("file", file);
+      const maxAttempts = 2;
+      let meals: ExtractedMeal[] = [];
 
-      const response = await fetch("/api/nutrition/extract-pdf", {
-        method: "POST",
-        body: formData,
-      });
+      for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+        if (attempt > 1) {
+          setGenerateProgress(
+            `Il modello AI è sovraccarico, riprovo (tentativo ${attempt}/${maxAttempts})...`,
+          );
+          await new Promise((resolve) => setTimeout(resolve, 3000));
+        }
 
-      const data = await parseAiResponse(response);
+        const formData = new FormData();
+        formData.append("file", file);
 
-      if (!response.ok) {
-        throw new Error(data.message ?? "Impossibile leggere il PDF.");
+        const response = await fetch("/api/nutrition/extract-pdf", {
+          method: "POST",
+          body: formData,
+        });
+
+        const data = await parseAiResponse(response);
+
+        if (!response.ok) {
+          const message = data.message ?? "Impossibile leggere il PDF.";
+          if (attempt < maxAttempts && isTransientAiError(message)) continue;
+          throw new Error(message);
+        }
+
+        meals = data.meals ?? [];
+        break;
       }
-
-      const meals = data.meals ?? [];
 
       if (meals.length === 0) {
         setError("Non è stato trovato nessun pasto nel PDF.");
@@ -363,6 +441,7 @@ export default function PlanDetail({ planId }: { planId: string }) {
     } catch (err) {
       setError(errorMessage(err));
     } finally {
+      setGenerateProgress("");
       setImportBusy(false);
       if (pdfInputRef.current) pdfInputRef.current.value = "";
     }
@@ -409,12 +488,9 @@ export default function PlanDetail({ planId }: { planId: string }) {
       const allMeals: ExtractedMeal[] = [];
 
       for (let weekday = 0; weekday < 7; weekday += 1) {
-        setGenerateProgress(`Genero ${WEEKDAY_LABEL[weekday]} (${weekday + 1} di 7)...`);
-
-        const response = await fetch("/api/nutrition/generate-plan", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+        const meals = await generateDayWithRetry(
+          weekday,
+          {
             heightCm: profile.height_cm,
             weightKg: profile.current_weight_kg,
             sex: profile.sex,
@@ -423,18 +499,11 @@ export default function PlanDetail({ planId }: { planId: string }) {
             activityLevel: profile.activity_level,
             notes: aiNotes.trim() || undefined,
             weekday,
-          }),
-        });
+          },
+          setGenerateProgress,
+        );
 
-        const data = await parseAiResponse(response);
-
-        if (!response.ok) {
-          throw new Error(
-            `${WEEKDAY_LABEL[weekday]}: ${data.message ?? "impossibile generare il giorno."}`,
-          );
-        }
-
-        allMeals.push(...(data.meals ?? []));
+        allMeals.push(...meals);
       }
 
       if (allMeals.length === 0) {
@@ -734,6 +803,12 @@ export default function PlanDetail({ planId }: { planId: string }) {
             Genera con AI
           </button>
         </div>
+
+        {importBusy && generateProgress && !showAiPanel && (
+          <p className="pdetail-note" role="status" aria-live="polite">
+            {generateProgress}
+          </p>
+        )}
 
         {showAiPanel && (
           <div className="nplan-form-panel nplan-form">
