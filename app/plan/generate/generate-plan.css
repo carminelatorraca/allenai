@@ -1,0 +1,235 @@
+.genplan-page {
+  max-width: 840px;
+  margin: 0 auto;
+  color: var(--ink-text);
+}
+
+.genplan-loading {
+  color: var(--ink-muted);
+}
+
+.genplan-back {
+  display: inline-flex;
+  margin-bottom: 18px;
+  color: var(--ink-muted);
+  font-size: 0.85rem;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.genplan-eyebrow {
+  margin: 0 0 8px;
+  color: var(--ink-green);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.genplan-page h1 {
+  margin: 0 0 10px;
+  font-size: clamp(1.6rem, 3vw, 2.1rem);
+  font-weight: 780;
+  letter-spacing: -0.03em;
+}
+
+.genplan-description {
+  margin: 0 0 22px;
+  color: var(--ink-muted);
+  font-size: 0.92rem;
+  line-height: 1.6;
+  max-width: 620px;
+}
+
+.genplan-alert {
+  padding: 13px 16px;
+  margin-bottom: 18px;
+  border: 1px solid var(--ink-amber-border);
+  border-radius: 12px;
+  background: var(--ink-amber-soft);
+  color: var(--ink-amber);
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+.genplan-alert a {
+  color: inherit;
+  text-decoration: underline;
+}
+
+.genplan-panel {
+  padding: 24px;
+  margin-bottom: 20px;
+  border: 1px solid var(--ink-border);
+  border-radius: var(--ink-radius-lg);
+  background: var(--ink-surface);
+  box-shadow: var(--ink-shadow);
+}
+
+.genplan-panel h2 {
+  margin: 0 0 16px;
+  font-size: 1.05rem;
+  font-weight: 760;
+}
+
+.genplan-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.genplan-grid label,
+.genplan-notes {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  color: var(--ink-text);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.genplan-notes {
+  margin-bottom: 20px;
+}
+
+.genplan-grid input,
+.genplan-grid select,
+.genplan-notes textarea {
+  width: 100%;
+  min-height: 46px;
+  padding: 11px 13px;
+  border: 1px solid var(--ink-border);
+  border-radius: 11px;
+  background: var(--ink-bg);
+  color: var(--ink-text);
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 450;
+}
+
+.genplan-notes textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+.genplan-grid input:focus,
+.genplan-grid select:focus,
+.genplan-notes textarea:focus {
+  outline: none;
+  border-color: var(--ink-green);
+  box-shadow: 0 0 0 3px var(--ink-green-soft);
+}
+
+.genplan-primary {
+  display: inline-flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  border: 0;
+  border-radius: 11px;
+  background: var(--ink-green);
+  color: var(--ink-on-green);
+  font-size: 0.92rem;
+  font-weight: 780;
+}
+
+.genplan-primary:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.genplan-secondary {
+  display: inline-flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 18px;
+  border: 1px solid var(--ink-border);
+  border-radius: 11px;
+  background: var(--ink-surface-soft);
+  color: var(--ink-text);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.genplan-preview-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.genplan-preview-actions .genplan-primary {
+  width: auto;
+  flex: 1;
+}
+
+.genplan-days {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.genplan-day {
+  padding: 20px 22px;
+  border: 1px solid var(--ink-border);
+  border-radius: var(--ink-radius-lg);
+  background: var(--ink-surface);
+}
+
+.genplan-day h3 {
+  margin: 0 0 14px;
+  font-size: 1rem;
+  font-weight: 760;
+}
+
+.genplan-day ul {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.genplan-day li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 0;
+  border-top: 1px dashed var(--ink-border);
+}
+
+.genplan-day li:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.genplan-day li strong {
+  font-size: 0.92rem;
+}
+
+.genplan-day li span {
+  color: var(--ink-muted);
+  font-size: 0.8rem;
+}
+
+.genplan-day li em {
+  color: var(--ink-muted);
+  font-size: 0.78rem;
+  font-style: normal;
+}
+
+@media (max-width: 560px) {
+  .genplan-panel {
+    padding: 18px;
+  }
+
+  .genplan-preview-actions {
+    flex-direction: column;
+  }
+
+  .genplan-preview-actions .genplan-secondary {
+    width: 100%;
+  }
+}

@@ -3,6 +3,7 @@
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import AppShell from "@/components/AppShell";
 import "./plan.css";
@@ -723,15 +724,20 @@ export default function PlanPage() {
                         <h2>Mesocicli</h2>
                     </div>
 
-                    <button
-                        className="plan-primary"
-                        onClick={() => {
-                            setShowForm((current) => !current);
-                            setError("");
-                        }}
-                    >
-                        {showForm ? "Annulla" : "+ Nuovo mesociclo"}
-                    </button>
+                    <div className="plan-day-title-actions">
+                        <Link className="plan-secondary" href="/plan/generate">
+                            ✨ Genera con AI
+                        </Link>
+                        <button
+                            className="plan-primary"
+                            onClick={() => {
+                                setShowForm((current) => !current);
+                                setError("");
+                            }}
+                        >
+                            {showForm ? "Annulla" : "+ Nuovo mesociclo"}
+                        </button>
+                    </div>
                 </div>
 
                 {showForm && (

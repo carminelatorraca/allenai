@@ -1,11 +1,16 @@
 import OpenAI from "openai";
 import { MEAL_PLAN_SCHEMA, type ExtractedMeal } from "@/lib/meal-plan-schema";
+import { WORKOUT_PLAN_SCHEMA, type GeneratedWorkoutDay } from "@/lib/workout-plan-schema";
 import {
+  aiErrorFailure,
   aiErrorResult,
+  missingApiKeyFailure,
   missingApiKeyResult,
+  truncatedFailure,
   truncatedResult,
   type AiProvider,
   type AiResult,
+  type AiWorkoutResult,
 } from "./types";
 
 const MODEL = process.env.OPENAI_MODEL || "gpt-4o";
@@ -58,6 +63,51 @@ async function runStructured(
   }
 }
 
+async function runStructuredWorkout(prompt: string): Promise<AiWorkoutResult> {
+  const apiKey = process.env.OPENAI_API_KEY;
+
+  if (!apiKey) {
+    return missingApiKeyFailure("OPENAI_API_KEY", "a pagamento, platform.openai.com");
+  }
+
+  try {
+    const client = new OpenAI({ apiKey });
+
+    const response = await client.responses.create({
+      model: MODEL,
+      input: [{ role: "user", content: prompt }],
+      max_output_tokens: 16000,
+      text: {
+        format: {
+          type: "json_schema",
+          name: "workout_plan",
+          schema: WORKOUT_PLAN_SCHEMA,
+          strict: true,
+        },
+      },
+    });
+
+    if (response.status === "incomplete" && response.incomplete_details?.reason === "max_output_tokens") {
+      return truncatedFailure();
+    }
+
+    const text = response.output_text;
+    if (!text) {
+      return { ok: false, status: 502, code: "ai_error", message: "Risposta AI vuota." };
+    }
+
+    let parsed: { days?: GeneratedWorkoutDay[] };
+    try {
+      parsed = JSON.parse(text) as { days?: GeneratedWorkoutDay[] };
+    } catch {
+      return truncatedFailure();
+    }
+    return { ok: true, days: parsed.days ?? [] };
+  } catch (error) {
+    return aiErrorFailure(error, "Errore durante la chiamata a OpenAI.");
+  }
+}
+
 export const openaiProvider: AiProvider = {
   async extractMealPlanFromPdf(pdfBase64, prompt) {
     return runStructured([
@@ -77,5 +127,9 @@ export const openaiProvider: AiProvider = {
 
   async generateMealPlan(prompt) {
     return runStructured([{ role: "user", content: prompt }]);
+  },
+
+  async generateWorkoutPlan(prompt) {
+    return runStructuredWorkout(prompt);
   },
 };

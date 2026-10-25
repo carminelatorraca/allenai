@@ -253,7 +253,15 @@
 
 .plan-day-title {
   align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
   margin-bottom: 20px;
+}
+
+.plan-day-title-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .plan-day-title h2 {

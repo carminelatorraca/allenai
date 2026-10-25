@@ -1,11 +1,16 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { MEAL_PLAN_SCHEMA, type ExtractedMeal } from "@/lib/meal-plan-schema";
+import { WORKOUT_PLAN_SCHEMA, type GeneratedWorkoutDay } from "@/lib/workout-plan-schema";
 import {
+  aiErrorFailure,
   aiErrorResult,
+  missingApiKeyFailure,
   missingApiKeyResult,
+  truncatedFailure,
   truncatedResult,
   type AiProvider,
   type AiResult,
+  type AiWorkoutResult,
 } from "./types";
 
 const MODEL = process.env.ANTHROPIC_MODEL || "claude-opus-4-8";
@@ -59,6 +64,52 @@ async function runStructured(content: Anthropic.MessageParam["content"]): Promis
   }
 }
 
+async function runStructuredWorkout(prompt: string): Promise<AiWorkoutResult> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+
+  if (!apiKey) {
+    return missingApiKeyFailure("ANTHROPIC_API_KEY", "a pagamento, console.anthropic.com");
+  }
+
+  try {
+    const client = new Anthropic({ apiKey });
+
+    const response = await client.messages.create({
+      model: MODEL,
+      max_tokens: 16000,
+      thinking: { type: "adaptive" },
+      output_config: { format: { type: "json_schema", schema: WORKOUT_PLAN_SCHEMA } },
+      messages: [{ role: "user", content: prompt }],
+    });
+
+    if (response.stop_reason === "refusal") {
+      return {
+        ok: false,
+        status: 502,
+        code: "ai_refusal",
+        message: "L'AI non è riuscita a elaborare questa richiesta.",
+      };
+    }
+
+    if (response.stop_reason === "max_tokens") return truncatedFailure();
+
+    const textBlock = response.content.find((block) => block.type === "text");
+    if (!textBlock || textBlock.type !== "text") {
+      return { ok: false, status: 502, code: "ai_error", message: "Risposta AI priva di contenuto testuale." };
+    }
+
+    let parsed: { days?: GeneratedWorkoutDay[] };
+    try {
+      parsed = JSON.parse(textBlock.text) as { days?: GeneratedWorkoutDay[] };
+    } catch {
+      return truncatedFailure();
+    }
+    return { ok: true, days: parsed.days ?? [] };
+  } catch (error) {
+    return aiErrorFailure(error, "Errore durante la chiamata a Claude.");
+  }
+}
+
 export const claudeProvider: AiProvider = {
   async extractMealPlanFromPdf(pdfBase64, prompt) {
     return runStructured([
@@ -72,5 +123,9 @@ export const claudeProvider: AiProvider = {
 
   async generateMealPlan(prompt) {
     return runStructured(prompt);
+  },
+
+  async generateWorkoutPlan(prompt) {
+    return runStructuredWorkout(prompt);
   },
 };
