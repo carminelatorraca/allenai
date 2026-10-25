@@ -701,6 +701,18 @@
   font-weight: 650;
 }
 
+.plan-day-load-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.plan-day-load-hint {
+  margin: -8px 0 0;
+  color: var(--plan-muted, #aab2a6);
+  font-size: 0.82rem;
+}
+
 .plan-form input,
 .plan-form select,
 .plan-form textarea,

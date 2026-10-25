@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import AppShell from "@/components/AppShell";
 import { calculateAge, calculateMacroTargets, type NutritionProfile } from "@/lib/nutrition";
+import { getExtraDailyTrainingCalories } from "@/lib/activity";
 import "./calculator.css";
 
 type Profile = NutritionProfile;
@@ -38,6 +39,7 @@ export default function CalculatorPage() {
   const router = useRouter();
 
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [extraCalories, setExtraCalories] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -65,6 +67,7 @@ export default function CalculatorPage() {
         setError("Completa prima il tuo profilo personale.");
       } else {
         setProfile(data as Profile);
+        setExtraCalories(await getExtraDailyTrainingCalories(sessionData.session.user.id));
       }
 
       setLoading(false);
@@ -133,9 +136,9 @@ export default function CalculatorPage() {
 
     // Formula Mifflin-St Jeor: stima del metabolismo basale (per le card di dettaglio).
     bmr = 10 * weight + 6.25 * height - 5 * age + (profile.sex === "male" ? 5 : -161);
-    maintenance = bmr * activityFactors[profile.activity_level!];
+    maintenance = bmr * activityFactors[profile.activity_level!] + extraCalories;
 
-    const targets = calculateMacroTargets(profile);
+    const targets = calculateMacroTargets(profile, extraCalories);
     if (targets) {
       targetCalories = targets.calories;
       protein = targets.protein;
@@ -186,6 +189,8 @@ export default function CalculatorPage() {
               <strong>{fmt(targetCalories)} kcal</strong>
               <p>
                 Mantenimento stimato: {fmt(maintenance)} kcal
+                {extraCalories > 0 &&
+                  ` (incluse ~${fmt(extraCalories)} kcal/giorno dagli allenamenti pianificati nella scheda attiva)`}
               </p>
             </div>
 

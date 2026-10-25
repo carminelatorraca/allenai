@@ -73,8 +73,15 @@ export function calculateAge(birthDate: string): number {
 /**
  * Stima calorie e macronutrienti target in base al profilo (formula Mifflin-St Jeor).
  * Ritorna null se il profilo non ha dati sufficienti/validi per una stima.
+ *
+ * `extraDailyCalories` è una media giornaliera di calorie bruciate dagli
+ * allenamenti pianificati (es. giorni di nuoto/cardio nel mesociclo attivo),
+ * da sommare al fabbisogno oltre al generico "livello di attività" del profilo.
  */
-export function calculateMacroTargets(profile: NutritionProfile): MacroTargets | null {
+export function calculateMacroTargets(
+  profile: NutritionProfile,
+  extraDailyCalories = 0,
+): MacroTargets | null {
   const age = profile.birth_date ? calculateAge(profile.birth_date) : 0;
 
   const valid =
@@ -95,7 +102,7 @@ export function calculateMacroTargets(profile: NutritionProfile): MacroTargets |
   const height = Number(profile.height_cm);
 
   const bmr = 10 * weight + 6.25 * height - 5 * age + (profile.sex === "male" ? 5 : -161);
-  const maintenance = bmr * ACTIVITY_FACTORS[profile.activity_level ?? ""];
+  const maintenance = bmr * ACTIVITY_FACTORS[profile.activity_level ?? ""] + extraDailyCalories;
 
   const adjustment =
     profile.goal === "lose_fat" ? -300 : profile.goal === "build_muscle" ? 200 : 0;

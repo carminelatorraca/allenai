@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import AppShell from "@/components/AppShell";
+import { estimateSessionCalories } from "@/lib/activity";
 import "./plan.css";
 
 type Mesocycle = {
@@ -31,6 +32,9 @@ type MesocycleDay = {
     activity_type: string;
     notes: string | null;
     sort_order: number;
+    duration_minutes: number | null;
+    intensity: string | null;
+    estimated_calories: number | null;
 };
 
 type TrainingTemplate = {
@@ -88,9 +92,12 @@ export default function PlanPage() {
     const [dayCode, setDayCode] = useState("");
     const [dayTitle, setDayTitle] = useState("");
     const [dayActivity, setDayActivity] = useState("gym");
+    const [dayDuration, setDayDuration] = useState("");
+    const [dayIntensity, setDayIntensity] = useState("moderate");
     const [dayNotes, setDayNotes] = useState("");
     const [dayScope, setDayScope] = useState<"single" | "all">("single");
     const [targetWeekId, setTargetWeekId] = useState("");
+    const [userWeight, setUserWeight] = useState<number | null>(null);
 
     const loadMesocycles = useCallback(async () => {
         setLoading(true);
@@ -118,6 +125,14 @@ export default function PlanPage() {
         }
 
         setMesocycles((data ?? []) as Mesocycle[]);
+
+        const { data: profileRow } = await supabase
+            .from("profiles")
+            .select("current_weight_kg")
+            .eq("id", authData.session.user.id)
+            .maybeSingle();
+
+        setUserWeight(profileRow?.current_weight_kg ?? null);
         setLoading(false);
     }, [router]);
 
@@ -171,7 +186,7 @@ export default function PlanPage() {
         const { data: dayData, error: dayError } = await supabase
             .from("mesocycle_days")
             .select(
-                "id, week_id, day_code, title, activity_type, notes, sort_order"
+                "id, week_id, day_code, title, activity_type, notes, sort_order, duration_minutes, intensity, estimated_calories"
             )
             .in("week_id", loadedWeeks.map((week) => week.id))
             .order("sort_order");
@@ -344,7 +359,7 @@ export default function PlanPage() {
                 .from("mesocycle_days")
                 .insert(dayRows)
                 .select(
-                    "id, week_id, day_code, title, activity_type, notes, sort_order"
+                    "id, week_id, day_code, title, activity_type, notes, sort_order, duration_minutes, intensity, estimated_calories"
                 );
 
             if (daysError || !createdDays) {
@@ -495,6 +510,8 @@ export default function PlanPage() {
         setDayCode("");
         setDayTitle("");
         setDayActivity("gym");
+        setDayDuration("");
+        setDayIntensity("moderate");
         setDayNotes("");
         setDayScope("single");
         setShowDayForm(true);
@@ -507,6 +524,8 @@ export default function PlanPage() {
         setDayCode(day.day_code);
         setDayTitle(day.title);
         setDayActivity(day.activity_type);
+        setDayDuration(day.duration_minutes?.toString() ?? "");
+        setDayIntensity(day.intensity ?? "moderate");
         setDayNotes(day.notes ?? "");
         setDayScope("single");
         setShowDayForm(true);
@@ -542,11 +561,20 @@ export default function PlanPage() {
                 return;
             }
 
+            const durationMinutes = dayDuration.trim() === "" ? null : Number(dayDuration);
+            const intensity = durationMinutes ? dayIntensity : null;
+            const estimatedCalories = userWeight
+                ? estimateSessionCalories(dayActivity, durationMinutes, intensity, userWeight)
+                : null;
+
             const payload = {
                 day_code: code,
                 title,
                 activity_type: dayActivity,
                 notes: dayNotes.trim() || null,
+                duration_minutes: durationMinutes,
+                intensity,
+                estimated_calories: estimatedCalories,
             };
 
             if (editingDay) {
@@ -860,10 +888,52 @@ export default function PlanPage() {
                                 <option value="gym">Palestra</option>
                                 <option value="cardio">Cardio</option>
                                 <option value="swimming">Nuoto</option>
+                                <option value="running">Corsa</option>
+                                <option value="cycling">Bici</option>
                                 <option value="rest">Riposo</option>
                                 <option value="other">Altro</option>
                             </select>
                         </label>
+
+                        {dayActivity !== "rest" && (
+                            <div className="plan-day-load-row">
+                                <label>
+                                    Durata (minuti)
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        step="5"
+                                        value={dayDuration}
+                                        onChange={(event) => setDayDuration(event.target.value)}
+                                        placeholder="Es. 60"
+                                    />
+                                </label>
+                                <label>
+                                    Intensità
+                                    <select
+                                        value={dayIntensity}
+                                        onChange={(event) => setDayIntensity(event.target.value)}
+                                    >
+                                        <option value="low">Bassa</option>
+                                        <option value="moderate">Moderata</option>
+                                        <option value="high">Alta</option>
+                                    </select>
+                                </label>
+                            </div>
+                        )}
+
+                        {dayDuration.trim() !== "" && userWeight && (
+                            <p className="plan-day-load-hint">
+                                ≈{" "}
+                                {estimateSessionCalories(
+                                    dayActivity,
+                                    Number(dayDuration),
+                                    dayIntensity,
+                                    userWeight,
+                                )}{" "}
+                                kcal stimate per questa sessione.
+                            </p>
+                        )}
 
                         <label>
                             Note

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import AppShell from "@/components/AppShell";
 import { calculateAge, type NutritionProfile } from "@/lib/nutrition";
+import { estimateSessionCalories } from "@/lib/activity";
 import type { GeneratedWorkoutDay } from "@/lib/workout-plan-schema";
 import "./generate-plan.css";
 
@@ -16,6 +17,32 @@ const GOAL_LABEL: Record<string, string> = {
   maintain: "Mantenere il livello attuale",
   improve_fitness: "Migliorare la forma fisica",
 };
+
+const ACTIVITY_LABEL: Record<string, string> = {
+  swimming: "Nuoto",
+  running: "Corsa",
+  cycling: "Bici",
+  cardio: "Cardio",
+  other: "Altro",
+};
+
+type ExtraActivity = {
+  id: string;
+  type: string;
+  sessionsPerWeek: number;
+  durationMinutes: string;
+  intensity: string;
+};
+
+function newExtraActivity(): ExtraActivity {
+  return {
+    id: Math.random().toString(36).slice(2),
+    type: "swimming",
+    sessionsPerWeek: 1,
+    durationMinutes: "45",
+    intensity: "moderate",
+  };
+}
 
 async function parseJsonResponse(
   response: Response,
@@ -45,6 +72,7 @@ export default function GeneratePlanPage() {
   const [experience, setExperience] = useState("intermediate");
   const [equipment, setEquipment] = useState("full_gym");
   const [notes, setNotes] = useState("");
+  const [extraActivities, setExtraActivities] = useState<ExtraActivity[]>([]);
 
   const [name, setName] = useState("Scheda generata dall'AI");
   const [durationWeeks, setDurationWeeks] = useState("8");
@@ -174,8 +202,40 @@ export default function GeneratePlanPage() {
         throw new Error(weeksError?.message ?? "Errore nella creazione delle settimane.");
       }
 
-      const dayRows = createdWeeks.flatMap((week) =>
-        generatedDays.map((day, index) => ({
+      const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+      const usedCodes = new Set(generatedDays.map((day) => day.day_code.toUpperCase()));
+
+      const extraSessions = extraActivities.flatMap((activity) => {
+        const durationMinutes = Number(activity.durationMinutes) || null;
+        const estimatedCalories =
+          profile?.current_weight_kg && durationMinutes
+            ? estimateSessionCalories(
+                activity.type,
+                durationMinutes,
+                activity.intensity,
+                profile.current_weight_kg,
+              )
+            : null;
+
+        return Array.from({ length: activity.sessionsPerWeek }, () => {
+          const code =
+            [...alphabet].find((letter) => !usedCodes.has(letter)) ??
+            `X${usedCodes.size + 1}`;
+          usedCodes.add(code);
+
+          return {
+            day_code: code,
+            title: ACTIVITY_LABEL[activity.type] ?? activity.type,
+            activity_type: activity.type,
+            duration_minutes: durationMinutes,
+            intensity: durationMinutes ? activity.intensity : null,
+            estimated_calories: estimatedCalories,
+          };
+        });
+      });
+
+      const dayRows = createdWeeks.flatMap((week) => [
+        ...generatedDays.map((day, index) => ({
           week_id: week.id,
           user_id: userId,
           day_code: day.day_code,
@@ -184,7 +244,19 @@ export default function GeneratePlanPage() {
           notes: null,
           sort_order: index,
         })),
-      );
+        ...extraSessions.map((session, index) => ({
+          week_id: week.id,
+          user_id: userId,
+          day_code: session.day_code,
+          title: session.title,
+          activity_type: session.activity_type,
+          notes: null,
+          duration_minutes: session.duration_minutes,
+          intensity: session.intensity,
+          estimated_calories: session.estimated_calories,
+          sort_order: generatedDays.length + index,
+        })),
+      ]);
 
       const { data: createdDays, error: daysError } = await supabase
         .from("mesocycle_days")
@@ -307,6 +379,116 @@ export default function GeneratePlanPage() {
               />
             </label>
 
+            <div className="genplan-extra">
+              <div className="genplan-extra__heading">
+                <div>
+                  <h3>Altre attività (opzionale)</h3>
+                  <p>
+                    Nuoto, corsa o altro sport che fai oltre alla palestra: verranno aggiunti come
+                    giorni veri nella scheda, e le calorie stimate verranno conteggiate nel
+                    fabbisogno della dieta.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="genplan-secondary"
+                  onClick={() => setExtraActivities((current) => [...current, newExtraActivity()])}
+                >
+                  + Aggiungi
+                </button>
+              </div>
+
+              {extraActivities.map((activity) => (
+                <div className="genplan-extra__row" key={activity.id}>
+                  <select
+                    value={activity.type}
+                    onChange={(event) =>
+                      setExtraActivities((current) =>
+                        current.map((item) =>
+                          item.id === activity.id ? { ...item, type: event.target.value } : item,
+                        ),
+                      )
+                    }
+                  >
+                    <option value="swimming">Nuoto</option>
+                    <option value="running">Corsa</option>
+                    <option value="cycling">Bici</option>
+                    <option value="cardio">Cardio</option>
+                    <option value="other">Altro</option>
+                  </select>
+
+                  <label>
+                    Volte/sett.
+                    <input
+                      type="number"
+                      min="1"
+                      max="7"
+                      value={activity.sessionsPerWeek}
+                      onChange={(event) =>
+                        setExtraActivities((current) =>
+                          current.map((item) =>
+                            item.id === activity.id
+                              ? { ...item, sessionsPerWeek: Number(event.target.value) }
+                              : item,
+                          ),
+                        )
+                      }
+                    />
+                  </label>
+
+                  <label>
+                    Minuti
+                    <input
+                      type="number"
+                      min="0"
+                      step="5"
+                      value={activity.durationMinutes}
+                      onChange={(event) =>
+                        setExtraActivities((current) =>
+                          current.map((item) =>
+                            item.id === activity.id
+                              ? { ...item, durationMinutes: event.target.value }
+                              : item,
+                          ),
+                        )
+                      }
+                    />
+                  </label>
+
+                  <label>
+                    Intensità
+                    <select
+                      value={activity.intensity}
+                      onChange={(event) =>
+                        setExtraActivities((current) =>
+                          current.map((item) =>
+                            item.id === activity.id
+                              ? { ...item, intensity: event.target.value }
+                              : item,
+                          ),
+                        )
+                      }
+                    >
+                      <option value="low">Bassa</option>
+                      <option value="moderate">Moderata</option>
+                      <option value="high">Alta</option>
+                    </select>
+                  </label>
+
+                  <button
+                    type="button"
+                    className="genplan-extra__remove"
+                    aria-label="Rimuovi attività"
+                    onClick={() =>
+                      setExtraActivities((current) => current.filter((item) => item.id !== activity.id))
+                    }
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+
             <button
               type="button"
               className="genplan-primary"
@@ -390,6 +572,23 @@ export default function GeneratePlanPage() {
                   </ul>
                 </article>
               ))}
+
+              {extraActivities.length > 0 && (
+                <article className="genplan-day">
+                  <h3>Altre attività</h3>
+                  <ul>
+                    {extraActivities.map((activity) => (
+                      <li key={activity.id}>
+                        <strong>{ACTIVITY_LABEL[activity.type] ?? activity.type}</strong>
+                        <span>
+                          {activity.sessionsPerWeek}×/settimana · {activity.durationMinutes || "—"}{" "}
+                          min · intensità {activity.intensity}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </article>
+              )}
             </section>
           </>
         )}

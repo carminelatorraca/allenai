@@ -28,7 +28,16 @@ type TrainingDay = {
   activity_type: string | null;
   notes: string | null;
   sort_order: number;
+  duration_minutes: number | null;
+  intensity: string | null;
+  estimated_calories: number | null;
   exercises: Exercise[];
+};
+
+const INTENSITY_LABEL: Record<string, string> = {
+  low: "bassa",
+  moderate: "moderata",
+  high: "alta",
 };
 
 type Week = {
@@ -493,6 +502,9 @@ export default function MesocycleDetail({
                         </h3>
                         <p className="plan-detail__day-description">
                           {day.activity_type || "Allenamento"}
+                          {day.duration_minutes ? ` · ${day.duration_minutes} min` : ""}
+                          {day.intensity ? ` · intensità ${INTENSITY_LABEL[day.intensity] ?? day.intensity}` : ""}
+                          {day.estimated_calories ? ` · ≈${day.estimated_calories} kcal` : ""}
                           {day.notes ? ` · ${day.notes}` : ""}
                         </p>
                       </div>

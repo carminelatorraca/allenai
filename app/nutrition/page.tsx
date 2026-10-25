@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import AppShell from "@/components/AppShell";
 import FoodAlternativeSearch, { type ReplacementItem } from "@/components/FoodAlternativeSearch";
+import { getExtraDailyTrainingCalories } from "@/lib/activity";
 import {
   MEAL_STATUS_LABEL,
   SLOT_LABEL,
@@ -510,7 +511,10 @@ function NutritionPageInner() {
         .eq("id", userId)
         .maybeSingle();
 
-      if (data) setMacroTargets(calculateMacroTargets(data));
+      if (data) {
+        const extraCalories = await getExtraDailyTrainingCalories(userId);
+        setMacroTargets(calculateMacroTargets(data, extraCalories));
+      }
     })();
   }, [userId]);
 
