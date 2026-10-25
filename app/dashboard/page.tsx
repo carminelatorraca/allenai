@@ -10,12 +10,20 @@ import {
   ChartIcon,
   DumbbellIcon,
   GridIcon,
+  SparklesIcon,
   UserIcon,
   UtensilsIcon,
 } from "@/components/icons";
 import "./dashboard.css";
 
 const primaryItems = [
+  {
+    category: "INTELLIGENZA ARTIFICIALE",
+    title: "Genera con AI",
+    description: "Scheda di allenamento o piano alimentare, generati in base al tuo profilo.",
+    path: "/generate",
+    icon: SparklesIcon,
+  },
   {
     category: "ORGANIZZAZIONE",
     title: "Il mio calendario",
