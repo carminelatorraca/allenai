@@ -422,10 +422,11 @@ export default function ProfilePage() {
 
         <section className="profile-integration">
           <p className="profile-eyebrow">INTEGRAZIONI</p>
-          <h2>Contapassi da iPhone</h2>
+          <h2>Passi e attività da iPhone (Salute, Mi Band/Mi Fitness...)</h2>
           <p className="profile-description">
-            Genera un token personale e usalo in un&apos;Automazione dell&apos;app Comandi di
-            iOS per inviare automaticamente i passi letti da Salute ogni giorno.
+            Genera un token personale e usalo in Automazioni dell&apos;app Comandi di iOS per
+            inviare automaticamente passi e attività (nuoto, corsa...) lette da Salute — anche da
+            un orologio/band che sincronizza con Salute, come la Mi Band tramite Mi Fitness.
           </p>
 
           {stepSyncToken ? (
@@ -436,11 +437,30 @@ export default function ProfilePage() {
               </div>
 
               <div className="profile-integration__code">
-                <p>Nell&apos;Automazione Shortcuts, usa un&apos;azione &quot;Richiedi contenuti URL&quot;:</p>
+                <p>Automazione passi — azione &quot;Richiedi contenuti URL&quot;:</p>
                 <code>URL: {origin || "https://il-tuo-dominio"}/api/health/steps</code>
                 <code>Metodo: POST</code>
                 <code>Intestazioni: Authorization = Bearer {stepSyncToken}</code>
                 <code>{"Corpo JSON: { \"date\": \"<data corrente ISO>\", \"steps\": <passi di oggi> }"}</code>
+              </div>
+
+              <div className="profile-integration__code">
+                <p>
+                  Automazione attività (nuoto/corsa/bici) — innesco &quot;Allenamento
+                  registrato&quot; in Salute, poi &quot;Richiedi contenuti URL&quot;:
+                </p>
+                <code>URL: {origin || "https://il-tuo-dominio"}/api/health/activity</code>
+                <code>Metodo: POST</code>
+                <code>Intestazioni: Authorization = Bearer {stepSyncToken}</code>
+                <code>
+                  {
+                    'Corpo JSON: { "date": "<data allenamento>", "activityType": "swimming|running|cycling", "durationMinutes": <durata>, "distanceKm": <distanza, opzionale> }'
+                  }
+                </code>
+                <p>
+                  Se Mi Fitness scrive gli allenamenti su Apple Salute, l&apos;Automazione può
+                  innescarsi da sola ogni volta che ne arriva uno nuovo.
+                </p>
               </div>
 
               <div className="profile-integration__actions">
