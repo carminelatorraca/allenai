@@ -227,3 +227,27 @@ export function SparklesIcon(props: IconProps) {
     props,
   );
 }
+
+export function FireIcon(props: IconProps) {
+  return base(
+    <path d="M12 22c4 0 7-3 7-7 0-5-4-7-4-11-3 2-3 5-3 7-2-1-3-3-3-5-2 2-4 5-4 9 0 4 3 7 7 7Z" />,
+    props,
+  );
+}
+
+export function DropletIcon(props: IconProps) {
+  return base(
+    <path d="M12 2S5 10 5 15a7 7 0 0 0 14 0c0-5-7-13-7-13Z" />,
+    props,
+  );
+}
+
+export function ArrowRightIcon(props: IconProps) {
+  return base(
+    <>
+      <path d="M5 12h14" />
+      <path d="m14 7 5 5-5 5" />
+    </>,
+    props,
+  );
+}

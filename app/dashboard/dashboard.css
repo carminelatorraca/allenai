@@ -1,7 +1,28 @@
 /* =========================================
    AllenAI — Home (dashboard)
-   Tema chiaro, usa i token definiti in app-shell.css
+   Palette "Forma" (lime/ink/stone) solo per questa pagina.
    ========================================= */
+
+.home-page {
+  --forma-ink: #17201b;
+  --forma-lime-100: #ecfccb;
+  --forma-lime-200: #d9f99d;
+  --forma-lime-300: #bef264;
+  --forma-lime-700: #4d7c0f;
+  --forma-stone-100: #f5f5f4;
+  --forma-stone-200: #e7e5e4;
+  --forma-stone-300: #d6d3d1;
+  --forma-stone-400: #a8a29e;
+  --forma-stone-500: #78716c;
+  --forma-shadow: 0 12px 36px rgb(23 32 27 / 0.08);
+
+  font-family: var(--font-dm-sans), -apple-system, sans-serif;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
 
 .home-loading {
   display: flex;
@@ -11,17 +32,9 @@
   color: var(--ink-muted);
 }
 
-.home-page {
-  display: flex;
-  flex-direction: column;
-  gap: 36px;
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
 .home-eyebrow {
   margin: 0 0 8px;
-  color: var(--ink-green);
+  color: var(--forma-lime-700);
   font-size: 0.72rem;
   font-weight: 800;
   letter-spacing: 0.14em;
@@ -35,6 +48,7 @@
   font-size: clamp(1.7rem, 3.4vw, 2.3rem);
   font-weight: 800;
   letter-spacing: -0.03em;
+  color: var(--forma-ink);
 }
 
 /* ---------- Striscia giorni ---------- */
@@ -47,22 +61,22 @@
 
 .home-day {
   display: flex;
-  min-height: 62px;
+  min-height: 60px;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 4px;
-  border: 1px solid var(--ink-border);
-  border-radius: 14px;
-  background: var(--ink-surface);
-  color: var(--ink-text);
+  border: 1px solid var(--forma-stone-200);
+  border-radius: 16px;
+  background: #ffffff;
+  color: var(--forma-ink);
   text-decoration: none;
   transition: border-color 150ms ease;
 }
 
 .home-day span {
-  color: var(--ink-muted);
-  font-size: 0.68rem;
+  color: var(--forma-stone-400);
+  font-size: 0.66rem;
   font-weight: 700;
   letter-spacing: 0.04em;
 }
@@ -73,151 +87,529 @@
 }
 
 .home-day--active {
-  border-color: var(--ink-text);
-  background: var(--ink-text);
+  border-color: var(--forma-ink);
+  background: var(--forma-ink);
 }
 
 .home-day--active span,
 .home-day--active strong {
-  color: var(--ink-bg);
+  color: var(--forma-lime-300);
 }
 
-/* ---------- Card "oggi" ---------- */
+/* ---------- Griglia statistiche ---------- */
 
-.home-today-card {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  padding: 24px;
-  border-radius: var(--ink-radius-lg);
-  background: #8bc93f;
-  box-shadow: var(--ink-shadow);
+.home-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
 }
 
-.home-today-card .circular-progress__content strong {
-  display: block;
-  font-size: 1.3rem;
-  font-weight: 800;
-  color: var(--ink-text);
+.home-stat-card {
+  padding: 16px;
+  border-radius: 20px;
+  box-shadow: var(--forma-shadow);
 }
 
-.home-today-card .circular-progress__content span {
-  color: var(--ink-text);
-  font-size: 0.64rem;
-  opacity: 0.7;
+.home-stat-card--dark {
+  background: var(--forma-ink);
+  color: #ffffff;
 }
 
-.home-today-card__macros {
-  display: flex;
-  min-width: 0;
-  flex: 1;
-  flex-direction: column;
-  gap: 12px;
+.home-stat-card--lime {
+  background: var(--forma-lime-300);
+  color: var(--forma-ink);
 }
 
-.home-today-card__macros > div {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.home-today-card__macro-row {
+.home-stat-card__top {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
 }
 
-.home-today-card__macro-row span {
+.home-stat-card__icon {
   display: inline-flex;
+  width: 34px;
+  height: 34px;
   align-items: center;
-  gap: 6px;
-  color: var(--ink-text);
-  font-size: 0.76rem;
-  font-weight: 700;
+  justify-content: center;
+  border-radius: 11px;
 }
 
-.home-today-card__dot {
-  display: inline-block;
-  width: 7px;
-  height: 7px;
-  flex-shrink: 0;
+.home-stat-card__icon--lime {
+  background: var(--forma-lime-300);
+  color: var(--forma-ink);
+}
+
+.home-stat-card__icon--dark {
+  background: var(--forma-ink);
+  color: var(--forma-lime-300);
+}
+
+.home-stat-card__add {
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.6);
+  color: var(--forma-ink);
+  cursor: pointer;
+}
+
+.home-stat-card__add:hover {
+  background: var(--forma-ink);
+  color: var(--forma-lime-300);
+}
+
+.home-stat-card__label {
+  margin: 12px 0 2px;
+  font-size: 0.74rem;
+  font-weight: 650;
+  opacity: 0.68;
+}
+
+.home-stat-card__value {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 800;
+}
+
+.home-stat-card__value span {
+  font-size: 0.68rem;
+  font-weight: 550;
+  opacity: 0.68;
+}
+
+.home-stat-card__bar {
+  height: 6px;
+  margin-top: 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.home-stat-card--lime .home-stat-card__bar {
+  background: rgba(23, 32, 27, 0.14);
+}
+
+.home-stat-card__bar > div {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--forma-lime-300);
+}
+
+.home-stat-card--lime .home-stat-card__bar > div {
+  background: var(--forma-ink);
+}
+
+/* ---------- Righe a due colonne ---------- */
+
+.home-row {
+  display: grid;
+  grid-template-columns: 1.35fr 0.65fr;
+  gap: 16px;
+}
+
+.home-row--wide {
+  grid-template-columns: 1.35fr 0.9fr;
+}
+
+/* ---------- Card "FORMA AI" ---------- */
+
+.home-ai-card {
+  position: relative;
+  overflow: hidden;
+  padding: 22px;
+  border-radius: 24px;
+  background: var(--forma-lime-300);
+  color: var(--forma-ink);
+  cursor: pointer;
+}
+
+.home-ai-card::before {
+  content: "";
+  position: absolute;
+  right: -48px;
+  bottom: -64px;
+  width: 210px;
+  height: 210px;
+  border: 2rem solid rgba(255, 255, 255, 0.3);
   border-radius: 50%;
 }
 
-.home-today-card__dot--protein {
-  background: #4b7bec;
-}
-
-.home-today-card__dot--carbs {
-  background: #e08a2c;
-}
-
-.home-today-card__dot--fat {
-  background: #d8558f;
-}
-
-.home-today-card__macro-row small {
-  color: var(--ink-text);
-  font-size: 0.7rem;
-  opacity: 0.75;
-}
-
-.home-today-card__bar {
-  height: 5px;
-  overflow: hidden;
+.home-ai-card__badge {
+  position: relative;
+  z-index: 1;
+  display: inline-block;
+  padding: 4px 12px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.55);
+  background: var(--forma-ink);
+  color: #ffffff;
+  font-size: 0.68rem;
+  font-weight: 800;
 }
 
-.home-today-card__bar > div {
-  height: 100%;
-  background: var(--ink-text);
-  border-radius: inherit;
+.home-ai-card__title {
+  position: relative;
+  z-index: 1;
+  max-width: 320px;
+  margin: 14px 0 8px;
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
 }
 
-/* ---------- Statistiche rapide ---------- */
+.home-ai-card__text {
+  position: relative;
+  z-index: 1;
+  max-width: 320px;
+  margin: 0;
+  color: rgba(23, 32, 27, 0.72);
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
 
-.home-stat-row {
+.home-ai-card__cta {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 18px;
+  padding: 11px 16px;
+  border-radius: 12px;
+  background: var(--forma-ink);
+  color: #ffffff;
+  font-size: 0.86rem;
+  font-weight: 750;
+}
+
+/* ---------- Card bianca generica ---------- */
+
+.home-card-plain {
   display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
+  flex-direction: column;
+  padding: 20px;
+  border: 1px solid var(--forma-stone-200);
+  border-radius: 24px;
+  background: #ffffff;
+  box-shadow: var(--forma-shadow);
+  color: var(--forma-ink);
 }
 
-.home-stat-chip {
+.home-card-plain__head {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 10px;
-  padding: 12px 16px;
-  border: 1px solid var(--ink-border);
-  border-radius: var(--ink-radius-md);
-  background: var(--ink-surface);
 }
 
-.home-stat-chip__icon {
+.home-card-plain__title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 750;
+}
+
+.home-card-plain__subtitle {
+  margin: 2px 0 0;
+  color: var(--forma-stone-500);
+  font-size: 0.82rem;
+}
+
+.home-card-plain__action {
   display: inline-flex;
-  width: 32px;
-  height: 32px;
+  width: 38px;
+  height: 38px;
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  border-radius: 9px;
-  background: var(--ink-amber-soft);
-  color: var(--ink-amber);
+  border: 0;
+  border-radius: 50%;
+  background: var(--forma-ink);
+  color: #ffffff;
+  cursor: pointer;
 }
 
-.home-stat-chip strong {
+.home-card-plain__action:hover {
+  background: var(--forma-lime-300);
+  color: var(--forma-ink);
+}
+
+.home-card-plain__link {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 5px;
+  border: 0;
+  background: none;
+  color: var(--forma-lime-700);
+  font-size: 0.84rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+/* ---------- Scorciatoie sport ---------- */
+
+.home-sport-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.home-sport-button {
+  display: flex;
+  aspect-ratio: 1;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 16px;
+  background: var(--forma-stone-100);
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+.home-sport-button:hover {
+  background: var(--forma-lime-100);
+}
+
+.home-activity-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: var(--forma-stone-100);
+}
+
+.home-activity-row p {
+  margin: 0;
+  font-size: 0.86rem;
+  font-weight: 750;
+}
+
+.home-activity-row span {
+  color: var(--forma-stone-500);
+  font-size: 0.74rem;
+}
+
+.home-activity-row strong {
+  color: var(--forma-lime-700);
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.home-activity-row--empty span {
+  font-weight: 600;
+}
+
+/* ---------- Piano alimentare ---------- */
+
+.home-meal-list {
+  display: flex;
+  flex-direction: column;
+  margin-top: 12px;
+}
+
+.home-meal-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-top: 1px solid var(--forma-stone-100);
+}
+
+.home-meal-row:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.home-meal-row__emoji {
+  display: inline-flex;
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  background: var(--forma-lime-100);
+  font-size: 1.15rem;
+}
+
+.home-meal-row__content {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+}
+
+.home-meal-row__content strong {
   display: block;
-  font-size: 0.95rem;
-  font-weight: 760;
+  font-size: 0.9rem;
+  font-weight: 700;
 }
 
-.home-stat-chip span {
-  color: var(--ink-muted);
-  font-size: 0.75rem;
+.home-meal-row__content span {
+  display: block;
+  margin-top: 2px;
+  color: var(--forma-stone-500);
+  font-size: 0.76rem;
 }
 
-/* ---------- Sezioni ---------- */
+.home-meal-row__kcal {
+  flex-shrink: 0;
+  margin: 0;
+  font-size: 0.86rem;
+  font-weight: 750;
+}
+
+.home-meal-row__kcal span {
+  color: var(--forma-stone-400);
+  font-weight: 450;
+}
+
+.home-empty-text {
+  margin: 8px 0;
+  color: var(--forma-stone-500);
+  font-size: 0.85rem;
+}
+
+.home-empty-text--dark {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.home-dashed-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 12px;
+  border: 1px dashed var(--forma-stone-300);
+  border-radius: 14px;
+  background: none;
+  color: var(--forma-stone-500);
+  font-size: 0.86rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.home-dashed-button:hover {
+  border-color: var(--forma-lime-700);
+  color: var(--forma-ink);
+}
+
+/* ---------- Card allenamento (dark) ---------- */
+
+.home-workout-card {
+  display: flex;
+  flex-direction: column;
+  padding: 22px;
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 85% 20%, rgb(190 242 100 / 0.22), transparent 30%),
+    linear-gradient(135deg, #26332b, #17201b);
+  box-shadow: var(--forma-shadow);
+  color: #ffffff;
+}
+
+.home-workout-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.home-workout-card__badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--forma-lime-300);
+  color: var(--forma-ink);
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.home-workout-card__duration {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.home-workout-card__title {
+  margin: 22px 0 2px;
+  font-size: 1.3rem;
+  font-weight: 800;
+}
+
+.home-workout-card__subtitle {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.82rem;
+}
+
+.home-workout-card__exercises {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.home-workout-exercise {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.home-workout-exercise__dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  margin-top: 6px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.home-workout-exercise__text strong {
+  display: block;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.home-workout-exercise__text small {
+  display: block;
+  margin-top: 2px;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.74rem;
+}
+
+.home-workout-card__cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 22px;
+  padding: 13px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--forma-lime-300);
+  color: var(--forma-ink);
+  font-size: 0.88rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.home-workout-card__cta:hover {
+  background: var(--forma-lime-200);
+}
+
+/* ---------- Sezioni / card secondarie ---------- */
 
 .home-section-heading {
   margin-bottom: 18px;
@@ -225,148 +617,84 @@
 
 .home-section-heading h2 {
   margin: 0;
-  font-size: 1.3rem;
+  font-size: 1.2rem;
   font-weight: 760;
   letter-spacing: -0.02em;
+  color: var(--forma-ink);
 }
-
-/* ---------- Card principali ---------- */
-
-.home-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-}
-
-.home-card {
-  display: flex;
-  flex-direction: column;
-  padding: 24px;
-  border: 1px solid var(--ink-border);
-  border-radius: var(--ink-radius-lg);
-  background: var(--ink-surface);
-  box-shadow: var(--ink-shadow);
-  cursor: pointer;
-  transition: transform 150ms ease, border-color 150ms ease;
-}
-
-.home-card:hover {
-  border-color: var(--ink-green-border);
-  transform: translateY(-2px);
-}
-
-.home-card-icon {
-  display: inline-flex;
-  width: 44px;
-  height: 44px;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 14px;
-  border-radius: 12px;
-  background: var(--ink-green-soft);
-  color: var(--ink-green);
-}
-
-.home-card-category {
-  color: var(--ink-green);
-  font-size: 0.7rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-}
-
-.home-card h3 {
-  margin: 8px 0 6px;
-  font-size: 1.1rem;
-  font-weight: 750;
-  letter-spacing: -0.02em;
-}
-
-.home-card p {
-  margin: 0;
-  color: var(--ink-muted);
-  font-size: 0.85rem;
-  line-height: 1.6;
-}
-
-.home-card-cta {
-  margin-top: 16px;
-  padding-top: 14px;
-  border-top: 1px solid var(--ink-border);
-  color: var(--ink-green);
-  font-size: 0.82rem;
-  font-weight: 700;
-}
-
-/* ---------- Card secondarie ---------- */
 
 .home-secondary-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
 }
 
 .home-secondary-card {
   display: flex;
   align-items: center;
-  gap: 13px;
+  gap: 12px;
   min-width: 0;
-  padding: 16px;
-  border: 1px solid var(--ink-border);
-  border-radius: var(--ink-radius-md);
-  background: var(--ink-surface);
+  padding: 14px;
+  border: 1px solid var(--forma-stone-200);
+  border-radius: 16px;
+  background: #ffffff;
   text-align: left;
   transition: border-color 150ms ease, transform 150ms ease;
 }
 
 .home-secondary-card:hover {
-  border-color: var(--ink-green-border);
+  border-color: var(--forma-lime-300);
   transform: translateY(-2px);
 }
 
 .home-secondary-icon {
   display: inline-flex;
-  width: 38px;
-  height: 38px;
-  flex: 0 0 38px;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
   align-items: center;
   justify-content: center;
   border-radius: 10px;
-  background: var(--ink-surface-soft);
-  color: var(--ink-green);
+  background: var(--forma-lime-100);
+  color: var(--forma-lime-700);
 }
 
 .home-secondary-content {
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
 }
 
 .home-secondary-content strong {
-  font-size: 0.9rem;
+  font-size: 0.86rem;
   font-weight: 700;
+  color: var(--forma-ink);
 }
 
 .home-secondary-content > span {
-  color: var(--ink-muted);
-  font-size: 0.78rem;
-  line-height: 1.5;
+  color: var(--forma-stone-500);
+  font-size: 0.74rem;
+  line-height: 1.4;
 }
 
-@media (max-width: 760px) {
-  .home-grid,
-  .home-secondary-grid {
+@media (max-width: 920px) {
+  .home-stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .home-row,
+  .home-row--wide {
     grid-template-columns: 1fr;
+  }
+
+  .home-secondary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 480px) {
-  .home-day strong {
-    font-size: 0.88rem;
-  }
-
-  .home-today-card {
-    gap: 14px;
-    padding: 18px;
+  .home-stat-card {
+    padding: 14px;
   }
 }
