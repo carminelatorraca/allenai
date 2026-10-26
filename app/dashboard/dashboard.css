@@ -51,17 +51,59 @@
   color: var(--forma-ink);
 }
 
-/* ---------- Striscia giorni ---------- */
+/* ---------- Settimana (calendario integrato) ---------- */
+
+.home-week-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.home-week-toolbar {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 8px;
+}
+
+.home-icon-button {
+  display: inline-flex;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--forma-stone-200);
+  border-radius: 50%;
+  background: #ffffff;
+  color: var(--forma-ink);
+}
+
+.home-icon-button:hover {
+  border-color: var(--forma-lime-300);
+}
+
+.home-today-button {
+  padding: 5px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--forma-lime-100);
+  color: var(--forma-lime-700);
+  font-size: 0.74rem;
+  font-weight: 700;
+}
 
 .home-day-strip {
   display: grid;
+  flex: 1;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 8px;
 }
 
 .home-day {
   display: flex;
-  min-height: 60px;
+  min-height: 64px;
   flex-direction: column;
   align-items: center;
   justify-content: center;
@@ -94,6 +136,36 @@
 .home-day--active span,
 .home-day--active strong {
   color: var(--forma-lime-300);
+}
+
+.home-day__dots {
+  display: flex;
+  gap: 3px;
+  height: 5px;
+}
+
+.home-dot {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--forma-stone-300);
+}
+
+.home-dot--done {
+  background: var(--forma-lime-700);
+}
+
+.home-day--active .home-dot--done {
+  background: var(--forma-lime-300);
+}
+
+.home-dot--progress {
+  background: #e08a2c;
+}
+
+.home-dot--meal {
+  background: #4b7bec;
 }
 
 /* ---------- Griglia statistiche ---------- */
@@ -180,6 +252,46 @@
   font-size: 0.68rem;
   font-weight: 550;
   opacity: 0.68;
+}
+
+.home-stat-card__value--button {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: left;
+}
+
+.home-stat-card__edit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.home-stat-card__edit input {
+  width: 0;
+  flex: 1;
+  min-width: 0;
+  padding: 4px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.12);
+  color: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.home-stat-card__edit button {
+  flex-shrink: 0;
+  padding: 4px 9px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--forma-lime-300);
+  color: var(--forma-ink);
+  font-size: 0.74rem;
+  font-weight: 750;
 }
 
 .home-stat-card__bar {
@@ -696,5 +808,18 @@
 @media (max-width: 480px) {
   .home-stat-card {
     padding: 14px;
+  }
+
+  .home-icon-button {
+    width: 28px;
+    height: 28px;
+  }
+
+  .home-day {
+    min-height: 54px;
+  }
+
+  .home-day strong {
+    font-size: 0.88rem;
   }
 }

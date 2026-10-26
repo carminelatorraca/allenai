@@ -58,10 +58,12 @@ export default function NutritionPlanListPage() {
       return;
     }
 
+    const userId = authData.session.user.id;
+
     const { data, error: queryError } = await supabase
       .from("nutrition_plans")
       .select("id,name,goal,start_date,duration_weeks,status")
-      .eq("user_id", authData.session.user.id)
+      .eq("user_id", userId)
       .order("created_at", { ascending: false });
 
     if (queryError) {
@@ -70,7 +72,44 @@ export default function NutritionPlanListPage() {
       return;
     }
 
-    setPlans((data ?? []) as NutritionPlan[]);
+    const loaded = (data ?? []) as NutritionPlan[];
+
+    // Senza nessun piano, mostrare questa lista vuota nasconde i pulsanti di
+    // generazione (PDF/AI), che vivono solo dentro un piano aperto: ne
+    // creiamo uno di default ed entriamo subito, come per le schede.
+    if (loaded.length === 0) {
+      const { data: created, error: createError } = await supabase
+        .from("nutrition_plans")
+        .insert({
+          user_id: userId,
+          name: "Il mio piano alimentare",
+          goal: "Mantenimento",
+          start_date: new Date().toLocaleDateString("en-CA"),
+          duration_weeks: null,
+          status: "active",
+        })
+        .select("id")
+        .single();
+
+      if (!createError && created) {
+        await supabase.from("nutrition_plan_days").insert(
+          WEEKDAYS.map((weekday) => ({
+            plan_id: created.id,
+            user_id: userId,
+            weekday,
+          })),
+        );
+        router.replace(`/nutrition/plan/${created.id}`);
+        return;
+      }
+    }
+
+    if (loaded.length === 1) {
+      router.replace(`/nutrition/plan/${loaded[0].id}`);
+      return;
+    }
+
+    setPlans(loaded);
     setLoading(false);
   }, [router]);
 

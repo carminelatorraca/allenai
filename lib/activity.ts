@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { findResumableSession, getNextWorkoutDay as pickNextInSequence } from "@/lib/workout-sequence";
 
 export type Intensity = "low" | "moderate" | "high";
 
@@ -111,7 +112,7 @@ export async function getWorkoutStreak(userId: string): Promise<number> {
   return streak;
 }
 
-export type NextWorkoutExercise = {
+export type TodayWorkoutExercise = {
   id: string;
   exercise_name: string;
   sets: number | null;
@@ -119,23 +120,24 @@ export type NextWorkoutExercise = {
   reps_max: number | null;
 };
 
-export type NextWorkoutDay = {
+export type TodayWorkoutDay = {
   id: string;
   title: string;
   day_code: string;
   week_number: number;
   activity_type: string | null;
   duration_minutes: number | null;
-  exercises: NextWorkoutExercise[];
+  resumed: boolean;
+  exercises: TodayWorkoutExercise[];
 };
 
 /**
- * Prossima giornata di allenamento "in rotazione": scorre le giornate non di
- * riposo del mesociclo attivo (ordinate per settimana e sort_order) e
- * restituisce quella successiva all'ultima completata — stessa logica di
- * "prossimo allenamento" usata in /calendar, semplificata per la dashboard.
+ * Giornata di allenamento "di oggi": una sessione in corso da riprendere ha
+ * la precedenza, altrimenti la prossima in sequenza (A → B → C → A…) dopo
+ * l'ultima completata — stessa logica condivisa con /workouts e usata prima
+ * in /calendar (vedi lib/workout-sequence.ts), qui per la card della home.
  */
-export async function getNextWorkoutDay(userId: string): Promise<NextWorkoutDay | null> {
+export async function getTodayWorkoutDay(userId: string): Promise<TodayWorkoutDay | null> {
   const { data: mesocycle } = await supabase
     .from("mesocycles")
     .select("id")
@@ -163,51 +165,49 @@ export async function getNextWorkoutDay(userId: string): Promise<NextWorkoutDay 
     title: string;
     activity_type: string | null;
     sort_order: number;
+    week_number: number;
     duration_minutes: number | null;
-    exercise_prescriptions: NextWorkoutExercise[];
+    exercise_prescriptions: TodayWorkoutExercise[];
   };
 
-  const flattened: { week_number: number; day: Row }[] = [];
+  const flattened: Row[] = [];
   for (const week of weeks as unknown as {
     week_number: number;
-    mesocycle_days: Row[];
+    mesocycle_days: Omit<Row, "week_number">[];
   }[]) {
-    const days = [...(week.mesocycle_days ?? [])]
-      .filter((day) => day.activity_type !== "rest")
-      .sort((a, b) => a.sort_order - b.sort_order);
-    for (const day of days) flattened.push({ week_number: week.week_number, day });
+    for (const day of week.mesocycle_days ?? []) {
+      flattened.push({ ...day, week_number: week.week_number });
+    }
   }
 
   if (flattened.length === 0) return null;
 
-  const dayIds = flattened.map((row) => row.day.id);
+  const dayIds = flattened.map((row) => row.id);
 
-  const { data: lastSession } = await supabase
+  const { data: sessions } = await supabase
     .from("workout_sessions")
-    .select("mesocycle_day_id,performed_at")
+    .select("id,mesocycle_day_id,performed_at,status,started_at,created_at")
     .eq("user_id", userId)
-    .eq("status", "completed")
     .in("mesocycle_day_id", dayIds)
-    .order("performed_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .order("performed_at", { ascending: false });
 
-  let index = 0;
-  if (lastSession?.mesocycle_day_id) {
-    const lastIndex = flattened.findIndex((row) => row.day.id === lastSession.mesocycle_day_id);
-    if (lastIndex !== -1) index = (lastIndex + 1) % flattened.length;
-  }
+  const sessionRows = sessions ?? [];
+  const resumable = findResumableSession(sessionRows);
+  const picked = resumable
+    ? flattened.find((day) => day.id === resumable.mesocycle_day_id)
+    : pickNextInSequence(flattened, sessionRows);
 
-  const { week_number, day } = flattened[index];
+  if (!picked) return null;
 
   return {
-    id: day.id,
-    title: day.title,
-    day_code: day.day_code,
-    week_number,
-    activity_type: day.activity_type,
-    duration_minutes: day.duration_minutes,
-    exercises: [...(day.exercise_prescriptions ?? [])].sort(
+    id: picked.id,
+    title: picked.title,
+    day_code: picked.day_code,
+    week_number: picked.week_number,
+    activity_type: picked.activity_type,
+    duration_minutes: picked.duration_minutes,
+    resumed: Boolean(resumable),
+    exercises: [...(picked.exercise_prescriptions ?? [])].sort(
       (a, b) => (a as unknown as { sort_order: number }).sort_order - (b as unknown as { sort_order: number }).sort_order,
     ),
   };

@@ -7,7 +7,6 @@ import { supabase } from "@/lib/supabase";
 import { syncThemeFromProfile } from "@/lib/theme";
 import {
   BellIcon,
-  CalendarIcon,
   ChartIcon,
   DumbbellIcon,
   GridIcon,
@@ -20,7 +19,6 @@ import "./app-shell.css";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Home", icon: HomeIcon },
-  { href: "/calendar", label: "Calendario", icon: CalendarIcon },
   { href: "/plan", label: "Programmi", icon: GridIcon },
   { href: "/workouts", label: "Allenamenti", icon: DumbbellIcon },
   { href: "/nutrition", label: "Alimentazione", icon: UtensilsIcon },
@@ -30,8 +28,8 @@ const NAV_ITEMS = [
 
 const BOTTOM_NAV_ITEMS = [
   { href: "/dashboard", label: "Home", icon: HomeIcon },
-  { href: "/calendar", label: "Calendario", icon: CalendarIcon },
-  { href: "/nutrition", label: "Alimentazione", icon: PlusIcon, center: true },
+  { href: "/nutrition", label: "Alimentazione", icon: UtensilsIcon },
+  { href: "/generate", label: "Genera", icon: PlusIcon, center: true },
   { href: "/workouts", label: "Allenamenti", icon: DumbbellIcon },
   { href: "/profile", label: "Profilo", icon: UserIcon },
 ];
