@@ -950,7 +950,7 @@
   position: fixed;
   left: 50%;
   bottom: calc(18px + env(safe-area-inset-bottom));
-  z-index: 40;
+  z-index: 60;
   display: flex;
   width: min(420px, calc(100% - 32px));
   align-items: center;
@@ -1013,9 +1013,17 @@
   color: var(--workout-on-green) !important;
 }
 
+/* Sotto gli 860px la shell mostra la barra di navigazione inferiore fissa
+   (vedi app-shell.css): il timer di recupero deve restare sopra di lei,
+   non sotto, altrimenti resta nascosto dietro una barra opaca. */
+@media (max-width: 860px) {
+  .workouts-rest-timer {
+    bottom: calc(78px + env(safe-area-inset-bottom));
+  }
+}
+
 @media (max-width: 540px) {
   .workouts-rest-timer {
-    bottom: calc(10px + env(safe-area-inset-bottom));
     padding: 12px 14px;
   }
 }
