@@ -3,6 +3,11 @@
   margin-bottom: 18px;
 }
 
+.pdetail-embedded {
+  max-width: none;
+  margin: 0;
+}
+
 .pdetail-import-actions {
   display: flex;
   flex-wrap: wrap;

@@ -21,14 +21,14 @@ const NAV_ITEMS = [
   { href: "/dashboard", label: "Home", icon: HomeIcon },
   { href: "/plan", label: "Programmi", icon: GridIcon },
   { href: "/workouts", label: "Allenamenti", icon: DumbbellIcon },
-  { href: "/nutrition", label: "Alimentazione", icon: UtensilsIcon },
+  { href: "/nutrition/plan", label: "Alimentazione", icon: UtensilsIcon },
   { href: "/progress", label: "Progressi", icon: ChartIcon },
   { href: "/profile", label: "Profilo", icon: UserIcon },
 ];
 
 const BOTTOM_NAV_ITEMS = [
   { href: "/dashboard", label: "Home", icon: HomeIcon },
-  { href: "/nutrition", label: "Alimentazione", icon: UtensilsIcon },
+  { href: "/nutrition/plan", label: "Alimentazione", icon: UtensilsIcon },
   { href: "/generate", label: "Genera", icon: PlusIcon, center: true },
   { href: "/workouts", label: "Allenamenti", icon: DumbbellIcon },
   { href: "/profile", label: "Profilo", icon: UserIcon },

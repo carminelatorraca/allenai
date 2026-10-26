@@ -2,10 +2,10 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import AppShell from "@/components/AppShell";
+import PlanDetail from "./[id]/PlanDetail";
 import "./nutrition-plan.css";
 
 type NutritionPlan = {
@@ -35,6 +35,7 @@ export default function NutritionPlanListPage() {
   const router = useRouter();
 
   const [plans, setPlans] = useState<NutritionPlan[]>([]);
+  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -72,11 +73,12 @@ export default function NutritionPlanListPage() {
       return;
     }
 
-    const loaded = (data ?? []) as NutritionPlan[];
+    let loaded = (data ?? []) as NutritionPlan[];
 
-    // Senza nessun piano, mostrare questa lista vuota nasconde i pulsanti di
-    // generazione (PDF/AI), che vivono solo dentro un piano aperto: ne
-    // creiamo uno di default ed entriamo subito, come per le schede.
+    // Senza nessun piano, questa pagina sarebbe una lista vuota senza modo
+    // di arrivare alla generazione PDF/AI (che vive nel pannello di
+    // dettaglio di un piano aperto): ne creiamo uno di default e lo
+    // selezioniamo subito, come per le schede.
     if (loaded.length === 0) {
       const { data: created, error: createError } = await supabase
         .from("nutrition_plans")
@@ -88,7 +90,7 @@ export default function NutritionPlanListPage() {
           duration_weeks: null,
           status: "active",
         })
-        .select("id")
+        .select("id,name,goal,start_date,duration_weeks,status")
         .single();
 
       if (!createError && created) {
@@ -99,17 +101,12 @@ export default function NutritionPlanListPage() {
             weekday,
           })),
         );
-        router.replace(`/nutrition/plan/${created.id}`);
-        return;
+        loaded = [created as NutritionPlan];
       }
     }
 
-    if (loaded.length === 1) {
-      router.replace(`/nutrition/plan/${loaded[0].id}`);
-      return;
-    }
-
     setPlans(loaded);
+    setSelectedPlanId((current) => current ?? loaded[0]?.id ?? null);
     setLoading(false);
   }, [router]);
 
@@ -176,8 +173,8 @@ export default function NutritionPlanListPage() {
       setShowForm(false);
       setName("");
       setNotice("Piano alimentare creato.");
+      setSelectedPlanId(created.id);
       await loadPlans();
-      router.push(`/nutrition/plan/${created.id}`);
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -241,20 +238,21 @@ export default function NutritionPlanListPage() {
     }
 
     setNotice("Piano eliminato.");
+    setSelectedPlanId((current) => (current === plan.id ? null : current));
     await loadPlans();
   }
 
   return (
     <AppShell>
-      <main className="nplan-page">
+      <main className="nplan-page nplan-page--workspace">
         <section className="nplan-hero">
           <p className="nplan-eyebrow">ALIMENTAZIONE</p>
           <h1>
             I tuoi <span>piani alimentari</span>
           </h1>
           <p>
-            Costruisci una struttura settimanale una volta sola: il diario la userà ogni
-            giorno in automatico, come succede con le schede di allenamento.
+            Crea, genera e modifica i tuoi piani settimanali: clicca un piano qui sotto per
+            vederne i dettagli e i pasti pianificati.
           </p>
         </section>
 
@@ -269,128 +267,148 @@ export default function NutritionPlanListPage() {
           </p>
         )}
 
-        <div className="nplan-section-heading">
-          <div>
-            <h2>I tuoi piani</h2>
-            <p>{plans.length} piani</p>
-          </div>
-          <button
-            type="button"
-            className="nplan-primary"
-            onClick={() => {
-              setShowForm((current) => !current);
-              setError("");
-            }}
-          >
-            {showForm ? "Annulla" : "+ Nuovo piano"}
-          </button>
-        </div>
-
-        {showForm && (
-          <form className="nplan-form-panel nplan-form" onSubmit={createPlan}>
-            <label>
-              Nome del piano *
-              <input
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                placeholder="Es. Piano massa - Blocco 1"
-                maxLength={120}
-                required
-              />
-            </label>
-
-            <div className="nplan-form-grid">
-              <label>
-                Obiettivo
-                <select value={goal} onChange={(event) => setGoal(event.target.value)}>
-                  <option value="Dimagrimento">Dimagrimento</option>
-                  <option value="Mantenimento">Mantenimento</option>
-                  <option value="Massa">Aumento massa</option>
-                  <option value="Ricomposizione">Ricomposizione corporea</option>
-                  <option value="Personalizzato">Personalizzato</option>
-                </select>
-              </label>
-
-              <label>
-                Durata (settimane, facoltativa)
-                <input
-                  type="number"
-                  min="1"
-                  max="52"
-                  value={durationWeeks}
-                  onChange={(event) => setDurationWeeks(event.target.value)}
-                  placeholder="Vuoto = continuativo"
-                />
-              </label>
+        <div className="nplan-workspace">
+          <div className="nplan-master">
+            <div className="nplan-section-heading">
+              <div>
+                <h2>I tuoi piani</h2>
+                <p>{plans.length} piani</p>
+              </div>
+              <button
+                type="button"
+                className="nplan-primary"
+                onClick={() => {
+                  setShowForm((current) => !current);
+                  setError("");
+                }}
+              >
+                {showForm ? "Annulla" : "+ Nuovo piano"}
+              </button>
             </div>
 
-            <label>
-              Data di inizio
-              <input
-                type="date"
-                value={startDate}
-                onChange={(event) => setStartDate(event.target.value)}
-              />
-            </label>
+            {showForm && (
+              <form className="nplan-form-panel nplan-form" onSubmit={createPlan}>
+                <label>
+                  Nome del piano *
+                  <input
+                    value={name}
+                    onChange={(event) => setName(event.target.value)}
+                    placeholder="Es. Piano massa - Blocco 1"
+                    maxLength={120}
+                    required
+                  />
+                </label>
 
-            <p className="nplan-field-help">
-              Dopo la creazione potrai compilare i 7 giorni della settimana con i pasti e gli
-              alimenti.
-            </p>
-
-            <button type="submit" className="nplan-primary" disabled={saving}>
-              {saving ? "Creazione..." : "Crea piano"}
-            </button>
-          </form>
-        )}
-
-        {loading ? (
-          <p className="nplan-loading">Caricamento...</p>
-        ) : plans.length === 0 ? (
-          <div className="nplan-empty">
-            <h3>Non hai ancora nessun piano alimentare</h3>
-            <p>Creane uno per iniziare a strutturare la tua settimana tipo.</p>
-          </div>
-        ) : (
-          <div className="nplan-list">
-            {plans.map((plan) => (
-              <article className="nplan-item" key={plan.id}>
-                <Link className="nplan-item-link" href={`/nutrition/plan/${plan.id}`}>
-                  <h3>{plan.name}</h3>
-                  <p>{plan.goal ?? "Obiettivo non specificato"}</p>
-                  <p>
-                    {plan.duration_weeks ? `${plan.duration_weeks} settimane` : "Continuativo"}
-                    {plan.start_date ? ` · Inizio ${plan.start_date}` : ""}
-                  </p>
-                  <span className="nplan-status">{STATUS_LABEL[plan.status] ?? plan.status}</span>
-                </Link>
-
-                <div className="nplan-item-actions">
-                  <Link className="nplan-secondary" href={`/nutrition/plan/${plan.id}`}>
-                    Apri piano →
-                  </Link>
-
-                  <label className="nplan-inline-label">
-                    Stato
-                    <select
-                      value={plan.status}
-                      onChange={(event) => void updateStatus(plan, event.target.value)}
-                    >
-                      <option value="draft">Bozza</option>
-                      <option value="active">Attivo</option>
-                      <option value="completed">Completato</option>
-                      <option value="archived">Archiviato</option>
+                <div className="nplan-form-grid">
+                  <label>
+                    Obiettivo
+                    <select value={goal} onChange={(event) => setGoal(event.target.value)}>
+                      <option value="Dimagrimento">Dimagrimento</option>
+                      <option value="Mantenimento">Mantenimento</option>
+                      <option value="Massa">Aumento massa</option>
+                      <option value="Ricomposizione">Ricomposizione corporea</option>
+                      <option value="Personalizzato">Personalizzato</option>
                     </select>
                   </label>
 
-                  <button type="button" className="nplan-danger" onClick={() => void deletePlan(plan)}>
-                    Elimina
-                  </button>
+                  <label>
+                    Durata (settimane, facoltativa)
+                    <input
+                      type="number"
+                      min="1"
+                      max="52"
+                      value={durationWeeks}
+                      onChange={(event) => setDurationWeeks(event.target.value)}
+                      placeholder="Vuoto = continuativo"
+                    />
+                  </label>
                 </div>
-              </article>
-            ))}
+
+                <label>
+                  Data di inizio
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(event) => setStartDate(event.target.value)}
+                  />
+                </label>
+
+                <p className="nplan-field-help">
+                  Dopo la creazione potrai compilare i 7 giorni della settimana con i pasti e
+                  gli alimenti.
+                </p>
+
+                <button type="submit" className="nplan-primary" disabled={saving}>
+                  {saving ? "Creazione..." : "Crea piano"}
+                </button>
+              </form>
+            )}
+
+            {loading ? (
+              <p className="nplan-loading">Caricamento...</p>
+            ) : plans.length === 0 ? (
+              <div className="nplan-empty">
+                <h3>Non hai ancora nessun piano alimentare</h3>
+                <p>Creane uno per iniziare a strutturare la tua settimana tipo.</p>
+              </div>
+            ) : (
+              <div className="nplan-list">
+                {plans.map((plan) => (
+                  <article
+                    className={`nplan-item${plan.id === selectedPlanId ? " nplan-item--active" : ""}`}
+                    key={plan.id}
+                  >
+                    <button
+                      type="button"
+                      className="nplan-item-link"
+                      onClick={() => setSelectedPlanId(plan.id)}
+                    >
+                      <h3>{plan.name}</h3>
+                      <p>{plan.goal ?? "Obiettivo non specificato"}</p>
+                      <p>
+                        {plan.duration_weeks ? `${plan.duration_weeks} settimane` : "Continuativo"}
+                        {plan.start_date ? ` · Inizio ${plan.start_date}` : ""}
+                      </p>
+                      <span className="nplan-status">{STATUS_LABEL[plan.status] ?? plan.status}</span>
+                    </button>
+
+                    <div className="nplan-item-actions">
+                      <label className="nplan-inline-label">
+                        Stato
+                        <select
+                          value={plan.status}
+                          onChange={(event) => void updateStatus(plan, event.target.value)}
+                        >
+                          <option value="draft">Bozza</option>
+                          <option value="active">Attivo</option>
+                          <option value="completed">Completato</option>
+                          <option value="archived">Archiviato</option>
+                        </select>
+                      </label>
+
+                      <button type="button" className="nplan-danger" onClick={() => void deletePlan(plan)}>
+                        Elimina
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
           </div>
-        )}
+
+          <div className="nplan-detail-panel">
+            {selectedPlanId ? (
+              <PlanDetail planId={selectedPlanId} embedded />
+            ) : (
+              !loading && (
+                <div className="nplan-empty">
+                  <h3>Nessun piano selezionato</h3>
+                  <p>Scegli un piano dall&apos;elenco, o creane uno nuovo, per vederne i dettagli.</p>
+                </div>
+              )
+            )}
+          </div>
+        </div>
       </main>
     </AppShell>
   );

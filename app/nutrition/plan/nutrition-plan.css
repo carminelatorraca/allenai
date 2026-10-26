@@ -147,6 +147,45 @@
   color: var(--ink-muted);
 }
 
+.nplan-page--workspace {
+  max-width: 1280px;
+}
+
+.nplan-workspace {
+  display: grid;
+  grid-template-columns: minmax(280px, 360px) 1fr;
+  align-items: start;
+  gap: 24px;
+}
+
+.nplan-master {
+  position: sticky;
+  top: 20px;
+}
+
+.nplan-detail-panel {
+  min-width: 0;
+  padding: 24px;
+  border: 1px solid var(--ink-border);
+  border-radius: var(--ink-radius-lg);
+  background: var(--ink-surface);
+  box-shadow: var(--ink-shadow);
+}
+
+@media (max-width: 960px) {
+  .nplan-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .nplan-master {
+    position: static;
+  }
+
+  .nplan-detail-panel {
+    padding: 18px;
+  }
+}
+
 .nplan-list {
   display: flex;
   flex-direction: column;
@@ -155,21 +194,29 @@
 
 .nplan-item {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 20px;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
   border: 1px solid var(--ink-border);
   border-radius: var(--ink-radius-lg);
   background: var(--ink-surface);
   box-shadow: var(--ink-shadow);
+  transition: border-color 150ms ease;
+}
+
+.nplan-item--active {
+  border-color: var(--ink-green);
+  background: var(--ink-green-soft);
 }
 
 .nplan-item-link {
+  width: 100%;
   min-width: 0;
-  flex: 1 1 260px;
+  padding: 0;
+  border: 0;
+  background: none;
   color: inherit;
+  text-align: left;
   text-decoration: none;
 }
 

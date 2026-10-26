@@ -195,7 +195,13 @@ function parseNonNegative(value: string): number | null {
   return parsed;
 }
 
-export default function PlanDetail({ planId }: { planId: string }) {
+export default function PlanDetail({
+  planId,
+  embedded = false,
+}: {
+  planId: string;
+  embedded?: boolean;
+}) {
   const [userId, setUserId] = useState<string | null>(null);
   const [plan, setPlan] = useState<NutritionPlan | null>(null);
   const [days, setDays] = useState<PlanDay[]>([]);
@@ -734,34 +740,33 @@ export default function PlanDetail({ planId }: { planId: string }) {
   }
 
   if (loading) {
-    return (
-      <AppShell>
-        <p className="nplan-loading">Caricamento piano...</p>
-      </AppShell>
-    );
+    const loadingNode = <p className="nplan-loading">Caricamento piano...</p>;
+    return embedded ? loadingNode : <AppShell>{loadingNode}</AppShell>;
   }
 
   if (!plan) {
-    return (
-      <AppShell>
-        <main className="nplan-page">
+    const notFoundNode = (
+      <main className="nplan-page">
+        {!embedded && (
           <Link className="nplan-secondary" href="/nutrition/plan">
             ← Torna ai piani
           </Link>
-          <p className="nplan-error" role="alert">
-            {error || "Piano non trovato."}
-          </p>
-        </main>
-      </AppShell>
+        )}
+        <p className="nplan-error" role="alert">
+          {error || "Piano non trovato."}
+        </p>
+      </main>
     );
+    return embedded ? notFoundNode : <AppShell>{notFoundNode}</AppShell>;
   }
 
-  return (
-    <AppShell>
-      <main className="nplan-page">
-        <Link className="nplan-secondary pdetail-back" href="/nutrition/plan">
-          ← Torna ai piani
-        </Link>
+  const detailBody = (
+      <main className={`nplan-page${embedded ? " pdetail-embedded" : ""}`}>
+        {!embedded && (
+          <Link className="nplan-secondary pdetail-back" href="/nutrition/plan">
+            ← Torna ai piani
+          </Link>
+        )}
 
         <section className="nplan-hero">
           <p className="nplan-eyebrow">PIANO ALIMENTARE</p>
@@ -1092,6 +1097,7 @@ export default function PlanDetail({ planId }: { planId: string }) {
           })}
         </div>
       </main>
-    </AppShell>
   );
+
+  return embedded ? detailBody : <AppShell>{detailBody}</AppShell>;
 }

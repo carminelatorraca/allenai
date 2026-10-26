@@ -131,9 +131,9 @@ const secondaryItems = [
     icon: GridIcon,
   },
   {
-    title: "Diario alimentare",
-    description: "Organizza i pasti e monitora l'alimentazione.",
-    path: "/nutrition",
+    title: "Piani alimentari",
+    description: "Crea, genera e modifica i tuoi piani settimanali.",
+    path: "/nutrition/plan",
     icon: UtensilsIcon,
   },
   {
@@ -631,7 +631,7 @@ export default function DashboardClient({ initialDate }: { initialDate?: string 
                   {formatDate(selectedDate, { weekday: "long", day: "numeric", month: "long" })}
                 </p>
               </div>
-              <button type="button" className="home-card-plain__link" onClick={() => openSection("/nutrition")}>
+              <button type="button" className="home-card-plain__link" onClick={() => openSection("/nutrition/plan")}>
                 Vedi piano <ArrowRightIcon size={14} />
               </button>
             </div>
