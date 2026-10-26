@@ -4,31 +4,31 @@
    ========================================= */
 
 :root {
-  --ink-bg: #f1f0f6;
+  --ink-bg: #f6f7f3;
   --ink-surface: #ffffff;
-  --ink-surface-soft: #f6f5fb;
-  --ink-border: #e7e6f0;
-  --ink-text: #15141f;
-  --ink-muted: #8d8c9a;
-  --ink-sidebar: #15291d;
+  --ink-surface-soft: #f5f5f4;
+  --ink-border: #e7e5e4;
+  --ink-text: #17201b;
+  --ink-muted: #78716c;
+  --ink-sidebar: #17201b;
   --ink-sidebar-hover: rgba(255, 255, 255, 0.07);
   --ink-sidebar-active: rgba(255, 255, 255, 0.1);
   --ink-sidebar-border: rgba(255, 255, 255, 0.14);
-  --ink-green: #7cb342;
+  --ink-green: #65a30d;
   --ink-on-green: #ffffff;
-  --ink-green-dark: #5e9430;
-  --ink-green-soft: #edf6e2;
-  --ink-green-border: #cfe7ac;
+  --ink-green-dark: #3f6212;
+  --ink-green-soft: rgba(101, 163, 13, 0.12);
+  --ink-green-border: rgba(101, 163, 13, 0.32);
   --ink-amber: #c98a2c;
   --ink-amber-soft: #fbead2;
   --ink-amber-border: #f0dcb4;
   --ink-red: #c2493f;
   --ink-red-soft: #fbe6e3;
   --ink-red-border: #eecbc7;
-  --ink-radius-lg: 20px;
-  --ink-radius-md: 14px;
+  --ink-radius-lg: 22px;
+  --ink-radius-md: 16px;
   --ink-radius-sm: 10px;
-  --ink-shadow: 0 1px 2px rgba(20, 20, 40, 0.04), 0 10px 30px rgba(20, 20, 40, 0.06);
+  --ink-shadow: 0 12px 32px rgba(23, 32, 27, 0.07);
 }
 
 :root[data-theme="dark"] {
@@ -38,11 +38,11 @@
   --ink-border: #30392e;
   --ink-text: #f4f7f0;
   --ink-muted: #a1afa1;
-  --ink-green: #b8f36b;
-  --ink-on-green: #15200e;
+  --ink-green: #bef264;
+  --ink-on-green: #17201b;
   --ink-green-dark: #1f2b17;
-  --ink-green-soft: rgba(184, 243, 107, 0.12);
-  --ink-green-border: rgba(184, 243, 107, 0.3);
+  --ink-green-soft: rgba(190, 242, 100, 0.12);
+  --ink-green-border: rgba(190, 242, 100, 0.3);
   --ink-amber: #e0a94f;
   --ink-amber-soft: rgba(224, 169, 79, 0.14);
   --ink-amber-border: rgba(224, 169, 79, 0.35);
@@ -57,7 +57,7 @@
   min-height: 100vh;
   background: var(--ink-bg);
   color: var(--ink-text);
-  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--font-dm-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color-scheme: light dark;
 }
 
