@@ -488,23 +488,88 @@ label.nutrition-secondary {
 
 .nutrition-meal {
   margin-top: 12px;
-  padding: 16px;
+  padding: 0;
   border: 1px solid var(--nut-border);
   border-radius: 14px;
   background: var(--nut-soft);
+  overflow: hidden;
 }
 
-.nutrition-meal__row {
+.nutrition-meal:first-of-type {
+  margin-top: 0;
+}
+
+.nutrition-meal[data-expanded="true"] {
+  border-color: var(--nut-border-hover);
+}
+
+/* Riga sempre visibile: icona stato + titolo + kcal + chevron. Tutta
+   la riga è cliccabile per espandere/richiudere il dettaglio. */
+.nutrition-meal__summary {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  width: 100%;
+  align-items: center;
   gap: 12px;
+  padding: 14px 16px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
 }
 
-.nutrition-meal__row h4 {
-  margin: 4px 0 0;
-  font-size: 1rem;
+.nutrition-meal__check {
+  display: inline-flex;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--nut-border);
+  border-radius: 50%;
+  background: var(--nut-bg);
+  color: var(--nut-on-accent);
+  transition: background 160ms ease, border-color 160ms ease;
+}
+
+.nutrition-meal__check--done {
+  border-color: var(--nut-accent);
+  background: var(--nut-accent);
+}
+
+.nutrition-meal__summary-text {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nutrition-meal__summary-text strong {
+  font-size: 0.94rem;
   font-weight: 750;
+  overflow-wrap: anywhere;
+}
+
+.nutrition-meal__kcal {
+  flex-shrink: 0;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.nutrition-meal__chevron {
+  flex-shrink: 0;
+  color: var(--nut-muted);
+  transition: transform 160ms ease;
+}
+
+.nutrition-meal[data-expanded="true"] .nutrition-meal__chevron {
+  transform: rotate(180deg);
+  color: var(--nut-accent);
+}
+
+.nutrition-meal__detail {
+  padding: 4px 16px 16px;
+  border-top: 1px dashed var(--nut-border);
 }
 
 .nutrition-meal__slot {

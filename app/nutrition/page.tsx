@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import AppShell from "@/components/AppShell";
 import FoodAlternativeSearch, { type ReplacementItem } from "@/components/FoodAlternativeSearch";
+import { CheckIcon, ChevronDownIcon } from "@/components/icons";
 import { getExtraDailyTrainingCalories } from "@/lib/activity";
 import {
   MEAL_STATUS_LABEL,
@@ -198,6 +199,7 @@ function NutritionPageInner() {
   const [copyingMealId, setCopyingMealId] = useState<string | null>(null);
   const [copyingAllDay, setCopyingAllDay] = useState(false);
   const [swapSearchKey, setSwapSearchKey] = useState<string | null>(null);
+  const [expandedMealId, setExpandedMealId] = useState<string | null>(null);
   const [previewOverride, setPreviewOverride] = useState<{ date: string; weekday: number } | null>(
     null,
   );
@@ -1100,99 +1102,125 @@ function NutritionPageInner() {
               ) : (
                 plannedMeals.map((meal) => {
                   const mealTotals = sumMacros(meal.items);
+                  const isExpanded = expandedMealId === meal.id;
+                  const isEaten = meal.status === "eaten";
                   return (
-                  <article className="nutrition-meal" key={meal.id}>
-                    <div className="nutrition-meal__row">
-                      <div>
-                        <span className="nutrition-meal__slot">{SLOT_LABEL[toSlot(meal.meal_type)]}</span>
-                        <h4>{meal.title}</h4>
-                      </div>
-                      <span className="nutrition-status" data-status={meal.status}>
-                        {MEAL_STATUS_LABEL[meal.status] ?? meal.status}
-                      </span>
-                    </div>
-
-                    {meal.instructions && <p className="nutrition-note">{meal.instructions}</p>}
-
-                    {meal.items.length > 0 && (
-                      <>
-                        <p className="nutrition-meal__totals">
-                          <strong>{round(mealTotals.kcal)} kcal</strong>
-                          <span>
-                            P {round(mealTotals.protein)} · C {round(mealTotals.carbs)} · F{" "}
-                            {round(mealTotals.fat)} g
-                          </span>
-                        </p>
-                        <ul className="nutrition-item-list">
-                          {meal.items.map((item) => (
-                            <li key={item.id}>
-                              <div className="nutrition-item-list__row">
-                                <span>{item.food_name}</span>
-                                <span>
-                                  {round(item.quantity_g)} g · {round(item.calories)} kcal
-                                </span>
-                              </div>
-                              <div className="nutrition-item-list__macros">
-                                <span>P {round(item.protein_g)} g</span>
-                                <span>C {round(item.carbs_g)} g</span>
-                                <span>F {round(item.fat_g)} g</span>
-                                <button
-                                  type="button"
-                                  className="nutrition-chip nutrition-chip--small"
-                                  disabled={swapSearchKey === `${meal.id}:${item.id}`}
-                                  onClick={() => void openSwapSearch(meal, item)}
-                                >
-                                  Cerca alternativa
-                                </button>
-                              </div>
-                              {swapSearchKey === `${meal.id}:${item.id}` && (
-                                <FoodAlternativeSearch
-                                  original={item}
-                                  onCancel={closeSwapSearch}
-                                  onReplace={(result) => void replacePlannedItem(meal, item, result)}
-                                />
-                              )}
-                            </li>
-                          ))}
-                        </ul>
-                      </>
-                    )}
-
-                    <div className="nutrition-item-actions">
-                      {meal.status !== "eaten" && (
-                        <button type="button" className="nutrition-chip" onClick={() => void markMealEaten(meal)}>
-                          Segna mangiato
-                        </button>
-                      )}
-                      {meal.status !== "skipped" && (
-                        <button
-                          type="button"
-                          className="nutrition-chip"
-                          onClick={() => void setMealStatus(meal, "skipped")}
-                        >
-                          Salta
-                        </button>
-                      )}
-                      {meal.status !== "planned" && (
-                        <button
-                          type="button"
-                          className="nutrition-chip"
-                          onClick={() => void setMealStatus(meal, "planned")}
-                        >
-                          Da mangiare
-                        </button>
-                      )}
-                      <button type="button" className="nutrition-chip" onClick={() => openEditMeal(meal)}>
-                        Modifica
-                      </button>
-                      <button
-                        type="button"
-                        className="nutrition-chip nutrition-chip--danger"
-                        onClick={() => void deleteMeal(meal)}
+                  <article className="nutrition-meal" key={meal.id} data-expanded={isExpanded}>
+                    <button
+                      type="button"
+                      className="nutrition-meal__summary"
+                      aria-expanded={isExpanded}
+                      onClick={() =>
+                        setExpandedMealId((current) => (current === meal.id ? null : meal.id))
+                      }
+                    >
+                      <span
+                        className={`nutrition-meal__check${isEaten ? " nutrition-meal__check--done" : ""}`}
+                        aria-hidden="true"
                       >
-                        Elimina
-                      </button>
-                    </div>
+                        {isEaten && <CheckIcon size={14} />}
+                      </span>
+
+                      <span className="nutrition-meal__summary-text">
+                        <span className="nutrition-meal__slot">{SLOT_LABEL[toSlot(meal.meal_type)]}</span>
+                        <strong>{meal.title}</strong>
+                      </span>
+
+                      {meal.items.length > 0 && (
+                        <strong className="nutrition-meal__kcal">{round(mealTotals.kcal)} kcal</strong>
+                      )}
+
+                      <ChevronDownIcon size={18} className="nutrition-meal__chevron" />
+                    </button>
+
+                    {isExpanded && (
+                      <div className="nutrition-meal__detail">
+                        <span className="nutrition-status" data-status={meal.status}>
+                          {MEAL_STATUS_LABEL[meal.status] ?? meal.status}
+                        </span>
+
+                        {meal.instructions && <p className="nutrition-note">{meal.instructions}</p>}
+
+                        {meal.items.length > 0 && (
+                          <>
+                            <p className="nutrition-meal__totals">
+                              <span>
+                                P {round(mealTotals.protein)} · C {round(mealTotals.carbs)} · F{" "}
+                                {round(mealTotals.fat)} g
+                              </span>
+                            </p>
+                            <ul className="nutrition-item-list">
+                              {meal.items.map((item) => (
+                                <li key={item.id}>
+                                  <div className="nutrition-item-list__row">
+                                    <span>{item.food_name}</span>
+                                    <span>
+                                      {round(item.quantity_g)} g · {round(item.calories)} kcal
+                                    </span>
+                                  </div>
+                                  <div className="nutrition-item-list__macros">
+                                    <span>P {round(item.protein_g)} g</span>
+                                    <span>C {round(item.carbs_g)} g</span>
+                                    <span>F {round(item.fat_g)} g</span>
+                                    <button
+                                      type="button"
+                                      className="nutrition-chip nutrition-chip--small"
+                                      disabled={swapSearchKey === `${meal.id}:${item.id}`}
+                                      onClick={() => void openSwapSearch(meal, item)}
+                                    >
+                                      Cerca alternativa
+                                    </button>
+                                  </div>
+                                  {swapSearchKey === `${meal.id}:${item.id}` && (
+                                    <FoodAlternativeSearch
+                                      original={item}
+                                      onCancel={closeSwapSearch}
+                                      onReplace={(result) => void replacePlannedItem(meal, item, result)}
+                                    />
+                                  )}
+                                </li>
+                              ))}
+                            </ul>
+                          </>
+                        )}
+
+                        <div className="nutrition-item-actions">
+                          {meal.status !== "eaten" && (
+                            <button type="button" className="nutrition-chip" onClick={() => void markMealEaten(meal)}>
+                              Segna mangiato
+                            </button>
+                          )}
+                          {meal.status !== "skipped" && (
+                            <button
+                              type="button"
+                              className="nutrition-chip"
+                              onClick={() => void setMealStatus(meal, "skipped")}
+                            >
+                              Salta
+                            </button>
+                          )}
+                          {meal.status !== "planned" && (
+                            <button
+                              type="button"
+                              className="nutrition-chip"
+                              onClick={() => void setMealStatus(meal, "planned")}
+                            >
+                              Da mangiare
+                            </button>
+                          )}
+                          <button type="button" className="nutrition-chip" onClick={() => openEditMeal(meal)}>
+                            Modifica
+                          </button>
+                          <button
+                            type="button"
+                            className="nutrition-chip nutrition-chip--danger"
+                            onClick={() => void deleteMeal(meal)}
+                          >
+                            Elimina
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </article>
                   );
                 })
@@ -1219,9 +1247,7 @@ function NutritionPageInner() {
                   Apri piano completo
                 </Link>
               </div>
-              <span className="nutrition-plan-preview__chevron" aria-hidden="true">
-                ›
-              </span>
+              <ChevronDownIcon size={18} className="nutrition-plan-preview__chevron" />
             </summary>
 
             {planPreview.meals.length === 0 ? (
