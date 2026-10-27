@@ -5,7 +5,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import AppShell from "@/components/AppShell";
-import { TimerIcon, TrashIcon } from "@/components/icons";
+import {
+  CheckIcon,
+  ChevronDownIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  TimerIcon,
+  TrashIcon,
+} from "@/components/icons";
 import { estimateSessionCalories } from "@/lib/activity";
 import "./workouts.css";
 
@@ -86,6 +93,14 @@ type SetDraft = {
 
 type DisplayStatus = "not_started" | "partial" | "completed";
 
+type MesocycleSummary = {
+  id: string;
+  name: string | null;
+  status: string;
+  start_date: string | null;
+  created_at: string;
+};
+
 function localDate() {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
@@ -141,6 +156,9 @@ export default function WorkoutsPage() {
   const [displayStatuses, setDisplayStatuses] = useState<Record<string, DisplayStatus>>({});
   const [selectedDay, setSelectedDay] = useState("");
   const [trainingDate, setTrainingDate] = useState("");
+  const [mesocycles, setMesocycles] = useState<MesocycleSummary[]>([]);
+  const [mesocycleIndex, setMesocycleIndex] = useState(0);
+  const [expandedExerciseId, setExpandedExerciseId] = useState<string | null>(null);
 
   const [activeSession, setActiveSession] = useState<Session | null>(null);
   const [exercises, setExercises] = useState<SessionExercise[]>([]);
@@ -182,6 +200,8 @@ export default function WorkoutsPage() {
   const savePromisesRef = useRef<Record<string, Promise<void>>>({});
   const saveErrorsRef = useRef<Record<string, string>>({});
   const urlDayRef = useRef<string | null>(null);
+  const userNavigatedRef = useRef(false);
+  const mesocycleIndexInitRef = useRef(false);
 
   const showError = (message: string) => {
     setErrorMessage(message);
@@ -269,88 +289,116 @@ export default function WorkoutsPage() {
     setDisplayStatuses(statuses);
   }, []);
 
-  const loadTrainingDays = useCallback(async (uid: string) => {
-    // Prima cerca i mesocicli attivi.
-    const { data: activeMesocycles, error: activeError } = await supabase
-      .from("mesocycles")
-      .select("id,name,status,start_date,created_at")
-      .eq("user_id", uid)
-      .eq("status", "active")
-      .order("start_date", { ascending: false });
+  // Carica settimane/giornate di UN mesociclo specifico. Estratta a parte
+  // così può essere richiamata sia al primo caricamento (mesociclo attivo)
+  // sia quando l'utente sfoglia i mesocicli con le frecce.
+  const loadDaysForMesocycle = useCallback(
+    async (uid: string, mesocycle: { id: string; name: string | null }) => {
+      const { data: weeks, error: weekError } = await supabase
+        .from("mesocycle_weeks")
+        .select("id,mesocycle_id,week_number")
+        .eq("user_id", uid)
+        .eq("mesocycle_id", mesocycle.id)
+        .order("week_number", { ascending: true });
 
-    if (activeError) throw activeError;
+      if (weekError) throw weekError;
 
-    let mesocycles = activeMesocycles ?? [];
+      if (!weeks?.length) {
+        setDays([]);
+        return [] as TrainingDay[];
+      }
 
-    // Se non ce ne sono, usa l'ultimo mesociclo creato.
-    if (mesocycles.length === 0) {
-      const { data: latest, error: latestError } = await supabase
+      const { data: dayRows, error: dayError } = await supabase
+        .from("mesocycle_days")
+        .select("id,week_id,title,day_code,sort_order,activity_type,duration_minutes,intensity")
+        .eq("user_id", uid)
+        .in("week_id", weeks.map((week) => week.id))
+        .order("sort_order", { ascending: true });
+
+      if (dayError) throw dayError;
+
+      const result: TrainingDay[] = (dayRows ?? [])
+        .filter((day) => day.activity_type !== "rest")
+        .map((day) => {
+          const week = weeks.find((item) => item.id === day.week_id);
+
+          return {
+            id: day.id,
+            title: day.title || day.day_code || "Allenamento",
+            day_code: day.day_code,
+            sort_order: day.sort_order,
+            week_number: week?.week_number ?? 0,
+            mesocycle_name: mesocycle.name ?? "Mesociclo",
+            mesocycle_id: mesocycle.id,
+            activity_type: day.activity_type,
+            duration_minutes: day.duration_minutes,
+            intensity: day.intensity,
+          };
+        })
+        .sort(
+          (a, b) =>
+            a.week_number - b.week_number ||
+            a.sort_order - b.sort_order,
+        );
+
+      setDays(result);
+      return result;
+    },
+    [],
+  );
+
+  const loadTrainingDays = useCallback(
+    async (uid: string) => {
+      // Prima cerca i mesocicli attivi.
+      const { data: activeMesocycles, error: activeError } = await supabase
         .from("mesocycles")
         .select("id,name,status,start_date,created_at")
         .eq("user_id", uid)
-        .order("created_at", { ascending: false })
-        .limit(1);
+        .eq("status", "active")
+        .order("start_date", { ascending: false });
 
-      if (latestError) throw latestError;
-      mesocycles = latest ?? [];
-    }
+      if (activeError) throw activeError;
 
-    if (!mesocycles.length) {
-      setDays([]);
-      return;
-    }
+      let candidates = activeMesocycles ?? [];
 
-    // Mantiene un solo mesociclo, coerentemente con il calendario.
-    const selectedMesocycle = mesocycles[0];
+      // Se non ce ne sono, usa l'ultimo mesociclo creato.
+      if (candidates.length === 0) {
+        const { data: latest, error: latestError } = await supabase
+          .from("mesocycles")
+          .select("id,name,status,start_date,created_at")
+          .eq("user_id", uid)
+          .order("created_at", { ascending: false })
+          .limit(1);
 
-    const { data: weeks, error: weekError } = await supabase
-      .from("mesocycle_weeks")
-      .select("id,mesocycle_id,week_number")
+        if (latestError) throw latestError;
+        candidates = latest ?? [];
+      }
+
+      if (!candidates.length) {
+        setDays([]);
+        return;
+      }
+
+      // Mantiene un solo mesociclo alla volta, coerentemente con il calendario;
+      // gli altri si raggiungono con le frecce del selettore mesociclo.
+      await loadDaysForMesocycle(uid, candidates[0]);
+    },
+    [loadDaysForMesocycle],
+  );
+
+  // Elenco di TUTTI i mesocicli dell'utente, in ordine cronologico, per il
+  // selettore con le frecce "< Mesociclo N >" (indipendente dal mesociclo
+  // attivo/più recente che loadTrainingDays sceglie come giornata di default).
+  const loadMesocycles = useCallback(async (uid: string) => {
+    const { data, error } = await supabase
+      .from("mesocycles")
+      .select("id,name,status,start_date,created_at")
       .eq("user_id", uid)
-      .eq("mesocycle_id", selectedMesocycle.id)
-      .order("week_number", { ascending: true });
+      .order("start_date", { ascending: true })
+      .order("created_at", { ascending: true });
 
-    if (weekError) throw weekError;
-
-    if (!weeks?.length) {
-      setDays([]);
-      return;
-    }
-
-    const { data: dayRows, error: dayError } = await supabase
-      .from("mesocycle_days")
-      .select("id,week_id,title,day_code,sort_order,activity_type,duration_minutes,intensity")
-      .eq("user_id", uid)
-      .in("week_id", weeks.map((week) => week.id))
-      .order("sort_order", { ascending: true });
-
-    if (dayError) throw dayError;
-
-    const result: TrainingDay[] = (dayRows ?? [])
-      .filter((day) => day.activity_type !== "rest")
-      .map((day) => {
-        const week = weeks.find((item) => item.id === day.week_id);
-
-        return {
-          id: day.id,
-          title: day.title || day.day_code || "Allenamento",
-          day_code: day.day_code,
-          sort_order: day.sort_order,
-          week_number: week?.week_number ?? 0,
-          mesocycle_name: selectedMesocycle.name ?? "Mesociclo",
-          mesocycle_id: selectedMesocycle.id,
-          activity_type: day.activity_type,
-          duration_minutes: day.duration_minutes,
-          intensity: day.intensity,
-        };
-      })
-      .sort(
-        (a, b) =>
-          a.week_number - b.week_number ||
-          a.sort_order - b.sort_order,
-      );
-
-    setDays(result);
+    if (error) throw error;
+    setMesocycles((data ?? []) as MesocycleSummary[]);
   }, []);
 
   const openSession = useCallback(async (session: Session, uid: string) => {
@@ -453,7 +501,7 @@ export default function WorkoutsPage() {
           .maybeSingle();
         setUserWeight(profileRow?.current_weight_kg ?? null);
 
-        await Promise.all([loadTrainingDays(uid), loadSessions(uid)]);
+        await Promise.all([loadTrainingDays(uid), loadSessions(uid), loadMesocycles(uid)]);
       } catch (err) {
         showError(
           err instanceof Error ? err.message : "Errore durante il caricamento.",
@@ -470,7 +518,7 @@ export default function WorkoutsPage() {
       Object.values(saveTimers.current).forEach(clearTimeout);
       saveTimers.current = {};
     };
-  }, [router, loadTrainingDays, loadSessions]);
+  }, [router, loadTrainingDays, loadSessions, loadMesocycles]);
 
   // Legge /workouts?day=ID&date=YYYY-MM-DD.
   useEffect(() => {
@@ -576,7 +624,7 @@ export default function WorkoutsPage() {
    * 3. dopo l'ultima giornata riparte dall'inizio del ciclo.
    */
   useEffect(() => {
-    if (!days.length || urlDayRef.current) return;
+    if (!days.length || urlDayRef.current || userNavigatedRef.current) return;
 
     const inProgress = sessions
       .filter((session) => session.status === "in_progress" && session.mesocycle_day_id)
@@ -643,6 +691,57 @@ export default function WorkoutsPage() {
 
     setSelectedDay(cycle[(index + 1) % cycle.length].id);
   }, [days, sessions]);
+
+  // Allinea il selettore "< Mesociclo N >" al mesociclo scelto di default
+  // (attivo, o più recente) una sola volta: dopo, resta sotto il controllo
+  // manuale delle frecce invece di saltare indietro ogni volta che `days`
+  // cambia.
+  useEffect(() => {
+    if (mesocycleIndexInitRef.current) return;
+    if (!mesocycles.length || !days.length) return;
+
+    const currentMesocycleId = days[0]?.mesocycle_id;
+    const index = mesocycles.findIndex((item) => item.id === currentMesocycleId);
+
+    if (index >= 0) {
+      setMesocycleIndex(index);
+      mesocycleIndexInitRef.current = true;
+    }
+  }, [mesocycles, days]);
+
+  async function stepMesocycle(direction: 1 | -1) {
+    if (!userId || busy) return;
+
+    const nextIndex = mesocycleIndex + direction;
+    if (nextIndex < 0 || nextIndex >= mesocycles.length) return;
+
+    const target = mesocycles[nextIndex];
+    userNavigatedRef.current = true;
+    setBusy(true);
+    setErrorMessage("");
+
+    try {
+      const loadedDays = await loadDaysForMesocycle(userId, target);
+      setMesocycleIndex(nextIndex);
+
+      if (loadedDays.length) {
+        const firstWeek = Math.min(...loadedDays.map((day) => day.week_number));
+        const firstDay = loadedDays
+          .filter((day) => day.week_number === firstWeek)
+          .sort((a, b) => a.sort_order - b.sort_order)[0];
+
+        setSelectedDay(firstDay?.id ?? "");
+      } else {
+        setSelectedDay("");
+      }
+    } catch (err) {
+      showError(
+        err instanceof Error ? err.message : "Impossibile caricare il mesociclo.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function startWorkout() {
     if (!userId || !selectedDay || !trainingDate || busy) return;
@@ -1206,6 +1305,60 @@ export default function WorkoutsPage() {
         )
       : null;
 
+  // Derivati per il selettore "giornata programmata" (tab A/B/C/D + frecce
+  // settimana) usato quando non c'è ancora una sessione attiva. Riusa lo
+  // stesso pattern "prima settimana come ciclo di riferimento + indice
+  // logico" già usato dall'effetto di auto-resume sopra.
+  const selectedDayInfo = days.find((item) => item.id === selectedDay) ?? null;
+  const pickerWeekNumbers = Array.from(new Set(days.map((day) => day.week_number))).sort(
+    (a, b) => a - b,
+  );
+  const pickerFirstWeek = pickerWeekNumbers[0];
+  const pickerDayCycle =
+    pickerFirstWeek !== undefined
+      ? days
+          .filter((day) => day.week_number === pickerFirstWeek)
+          .sort((a, b) => a.sort_order - b.sort_order)
+      : [];
+  const pickerLogicalIndex = selectedDayInfo
+    ? Math.max(0, findLogicalDayIndex(pickerDayCycle, selectedDayInfo))
+    : 0;
+  const pickerWeekIndex = selectedDayInfo
+    ? pickerWeekNumbers.indexOf(selectedDayInfo.week_number)
+    : 0;
+
+  function resolvePickerDay(weekIdx: number, logicalIdx: number): TrainingDay | undefined {
+    if (!pickerWeekNumbers.length || !pickerDayCycle.length) return undefined;
+
+    const clampedWeekIdx = Math.max(0, Math.min(pickerWeekNumbers.length - 1, weekIdx));
+    const week = pickerWeekNumbers[clampedWeekIdx];
+    const weekDays = days
+      .filter((day) => day.week_number === week)
+      .sort((a, b) => a.sort_order - b.sort_order);
+
+    const clampedLogicalIdx = Math.max(0, Math.min(pickerDayCycle.length - 1, logicalIdx));
+    const targetCycleDay = pickerDayCycle[clampedLogicalIdx];
+    const idx = findLogicalDayIndex(weekDays, targetCycleDay);
+
+    return idx >= 0 ? weekDays[idx] : weekDays[Math.min(clampedLogicalIdx, weekDays.length - 1)];
+  }
+
+  function selectPickerDayTab(logicalIdx: number) {
+    const target = resolvePickerDay(pickerWeekIndex, logicalIdx);
+    if (target) {
+      userNavigatedRef.current = true;
+      setSelectedDay(target.id);
+    }
+  }
+
+  function stepPickerWeek(direction: 1 | -1) {
+    const target = resolvePickerDay(pickerWeekIndex + direction, pickerLogicalIndex);
+    if (target) {
+      userNavigatedRef.current = true;
+      setSelectedDay(target.id);
+    }
+  }
+
   if (loading) {
     return (
       <AppShell>
@@ -1363,102 +1516,147 @@ export default function WorkoutsPage() {
               const exerciseSets = sets.filter(
                 (set) => set.session_exercise_id === exercise.id,
               );
+              const isExpanded = expandedExerciseId === exercise.id;
+              const isExerciseDone =
+                exerciseSets.length > 0 &&
+                exerciseSets.every((set) => hasValidReps(drafts[set.id]));
+              const enteredCount = exerciseSets.filter((set) =>
+                hasEnteredData(drafts[set.id]),
+              ).length;
 
               return (
-                <article className="workouts-exercise" key={exercise.id}>
-                  <div className="workouts-exercise-heading">
-                    <h3>{exercise.exercise_name}</h3>
-                    <span>
-                      {exercise.planned_sets ?? 0} serie ·{" "}
-                      {exercise.reps_min ?? "—"}–{exercise.reps_max ?? "—"} reps
-                    </span>
-                  </div>
-
-                  <div className="workouts-exercise-meta">
-                    <span>Peso target: {exercise.target_weight_kg ?? "—"} kg</span>
-                    <span>Recupero: {exercise.rest_seconds ?? "—"} s</span>
-                    {exercise.tut && <span>TUT: {exercise.tut}</span>}
-                    <button
-                      type="button"
-                      className="workouts-timer-start"
-                      onClick={() => startRestTimer(exercise.exercise_name, exercise.rest_seconds)}
+                <article
+                  className="workouts-exercise"
+                  key={exercise.id}
+                  data-expanded={isExpanded}
+                >
+                  <button
+                    type="button"
+                    className="workouts-exercise-summary"
+                    aria-expanded={isExpanded}
+                    onClick={() =>
+                      setExpandedExerciseId((current) =>
+                        current === exercise.id ? null : exercise.id,
+                      )
+                    }
+                  >
+                    <span
+                      className={`workouts-exercise-check${isExerciseDone ? " workouts-exercise-check--done" : ""}`}
+                      aria-hidden="true"
                     >
-                      <TimerIcon size={14} /> Avvia recupero
-                    </button>
-                  </div>
+                      {isExerciseDone && <CheckIcon size={14} />}
+                    </span>
 
-                  {exercise.notes && (
-                    <p className="workouts-exercise-notes">{exercise.notes}</p>
-                  )}
+                    <span className="workouts-exercise-summary__text">
+                      <strong>{exercise.exercise_name}</strong>
+                      <span>
+                        {exercise.planned_sets ?? exerciseSets.length} serie ·{" "}
+                        {exercise.reps_min ?? "—"}–{exercise.reps_max ?? "—"} reps
+                        {enteredCount > 0 &&
+                          ` · ${enteredCount}/${exerciseSets.length} fatte`}
+                      </span>
+                    </span>
 
-                  <div className="workouts-sets">
-                    {exerciseSets.map((set) => {
-                      const draft = drafts[set.id];
-                      if (!draft) return null;
+                    <ChevronDownIcon size={18} className="workouts-exercise-chevron" />
+                  </button>
 
-                      return (
-                        <div className="workouts-set-row" key={set.id}>
-                          <strong>Serie {set.set_number}</strong>
+                  {isExpanded && (
+                    <div className="workouts-exercise-detail">
+                      {exercise.notes && (
+                        <p className="workouts-exercise-notes">{exercise.notes}</p>
+                      )}
 
-                          <label>
-                            Reps
-                            <input
-                              type="number"
-                              min="0"
-                              step="1"
-                              value={draft.reps}
-                              onChange={(event) =>
-                                updateDraft(set.id, "reps", event.target.value, {
-                                  exerciseName: exercise.exercise_name,
-                                  restSeconds: exercise.rest_seconds,
-                                })
-                              }
-                              onBlur={() => saveOnBlur(set.id)}
-                            />
-                          </label>
-
-                          <label>
-                            Kg
-                            <input
-                              type="number"
-                              min="0"
-                              step="0.5"
-                              value={draft.weight_kg}
-                              onChange={(event) =>
-                                updateDraft(set.id, "weight_kg", event.target.value)
-                              }
-                              onBlur={() => saveOnBlur(set.id)}
-                            />
-                          </label>
-
-                          <label>
-                            RPE
-                            <input
-                              type="number"
-                              min="1"
-                              max="10"
-                              step="0.5"
-                              value={draft.rpe}
-                              onChange={(event) =>
-                                updateDraft(set.id, "rpe", event.target.value)
-                              }
-                              onBlur={() => saveOnBlur(set.id)}
-                            />
-                          </label>
-
-                          <span className="workouts-save-status" aria-live="polite">
-                            {saveErrors[set.id]
-                              ? saveErrors[set.id]
-                              : savingIds.includes(set.id)
-                                ? "Salvataggio…"
-                                : hasEnteredData(draft)
-                                  ? "Salvato automaticamente"
-                                  : "Pronto"}
-                          </span>
+                      <div className="workouts-exercise-timer-row">
+                        <div className="workouts-exercise-timer-row__meta">
+                          <span>Recupero: {exercise.rest_seconds ?? "—"} s</span>
+                          {exercise.tut && <span>TUT: {exercise.tut}</span>}
                         </div>
-                      );
-                    })}
-                  </div>
+                        <button
+                          type="button"
+                          className="workouts-timer-start"
+                          onClick={() =>
+                            startRestTimer(exercise.exercise_name, exercise.rest_seconds)
+                          }
+                        >
+                          <TimerIcon size={14} /> Avvia recupero
+                        </button>
+                      </div>
+
+                      <div className="workouts-exercise-kg">
+                        <span>Peso target</span>
+                        <strong>{exercise.target_weight_kg ?? "—"} kg</strong>
+                      </div>
+
+                      <div className="workouts-sets">
+                        {exerciseSets.map((set) => {
+                          const draft = drafts[set.id];
+                          if (!draft) return null;
+
+                          return (
+                            <div className="workouts-set-row" key={set.id}>
+                              <strong>Serie {set.set_number}</strong>
+
+                              <label>
+                                Reps
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="1"
+                                  value={draft.reps}
+                                  onChange={(event) =>
+                                    updateDraft(set.id, "reps", event.target.value, {
+                                      exerciseName: exercise.exercise_name,
+                                      restSeconds: exercise.rest_seconds,
+                                    })
+                                  }
+                                  onBlur={() => saveOnBlur(set.id)}
+                                />
+                              </label>
+
+                              <label>
+                                Kg
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="0.5"
+                                  value={draft.weight_kg}
+                                  onChange={(event) =>
+                                    updateDraft(set.id, "weight_kg", event.target.value)
+                                  }
+                                  onBlur={() => saveOnBlur(set.id)}
+                                />
+                              </label>
+
+                              <label>
+                                RPE
+                                <input
+                                  type="number"
+                                  min="1"
+                                  max="10"
+                                  step="0.5"
+                                  value={draft.rpe}
+                                  onChange={(event) =>
+                                    updateDraft(set.id, "rpe", event.target.value)
+                                  }
+                                  onBlur={() => saveOnBlur(set.id)}
+                                />
+                              </label>
+
+                              <span className="workouts-save-status" aria-live="polite">
+                                {saveErrors[set.id]
+                                  ? saveErrors[set.id]
+                                  : savingIds.includes(set.id)
+                                    ? "Salvataggio…"
+                                    : hasEnteredData(draft)
+                                      ? "Salvato automaticamente"
+                                      : "Pronto"}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </article>
               );
             })}
@@ -1475,20 +1673,87 @@ export default function WorkoutsPage() {
               </p>
 
               <div className="workouts-form">
-                <label>
-                  Giornata programmata
-                  <select
-                    value={selectedDay}
-                    onChange={(event) => setSelectedDay(event.target.value)}
-                  >
-                    <option value="">Seleziona una giornata</option>
-                    {days.map((day) => (
-                      <option key={day.id} value={day.id}>
-                        {day.mesocycle_name} · Settimana {day.week_number} · {day.title}
-                      </option>
+                {mesocycles.length > 0 && (
+                  <div className="workouts-mesocycle-pager">
+                    <button
+                      type="button"
+                      className="workouts-pager-arrow"
+                      onClick={() => void stepMesocycle(-1)}
+                      disabled={busy || mesocycleIndex <= 0}
+                      aria-label="Mesociclo precedente"
+                    >
+                      <ChevronLeftIcon size={18} />
+                    </button>
+
+                    <div className="workouts-mesocycle-pager__label">
+                      <span className="workouts-mesocycle-pager__eyebrow">
+                        Mesociclo {mesocycleIndex + 1}
+                      </span>
+                      <strong>{mesocycles[mesocycleIndex]?.name || "Senza nome"}</strong>
+                      <span className="workouts-mesocycle-pager__count">
+                        {mesocycleIndex + 1} / {mesocycles.length}
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="workouts-pager-arrow"
+                      onClick={() => void stepMesocycle(1)}
+                      disabled={busy || mesocycleIndex >= mesocycles.length - 1}
+                      aria-label="Mesociclo successivo"
+                    >
+                      <ChevronRightIcon size={18} />
+                    </button>
+                  </div>
+                )}
+
+                {pickerDayCycle.length > 0 && (
+                  <div className="workouts-day-tabs" role="tablist" aria-label="Giornata">
+                    {pickerDayCycle.map((day, index) => (
+                      <button
+                        key={day.id}
+                        type="button"
+                        role="tab"
+                        aria-selected={index === pickerLogicalIndex}
+                        className={`workouts-day-tab${
+                          index === pickerLogicalIndex ? " workouts-day-tab--active" : ""
+                        }`}
+                        onClick={() => selectPickerDayTab(index)}
+                      >
+                        {day.day_code || day.title}
+                      </button>
                     ))}
-                  </select>
-                </label>
+                  </div>
+                )}
+
+                {selectedDayInfo && pickerWeekNumbers.length > 0 && (
+                  <div className="workouts-week-pager">
+                    <button
+                      type="button"
+                      className="workouts-pager-arrow workouts-pager-arrow--small"
+                      onClick={() => stepPickerWeek(-1)}
+                      disabled={pickerWeekIndex <= 0}
+                      aria-label="Settimana precedente"
+                    >
+                      <ChevronLeftIcon size={16} />
+                    </button>
+
+                    <span>
+                      Settimana {selectedDayInfo.week_number} · Sessione {pickerWeekIndex + 1}
+                      {selectedDayInfo.title && ` · ${selectedDayInfo.title}`}
+                    </span>
+
+                    <button
+                      type="button"
+                      className="workouts-pager-arrow workouts-pager-arrow--small"
+                      onClick={() => stepPickerWeek(1)}
+                      disabled={pickerWeekIndex >= pickerWeekNumbers.length - 1}
+                      aria-label="Settimana successiva"
+                    >
+                      <ChevronRightIcon size={16} />
+                    </button>
+                  </div>
+                )}
 
                 <label>
                   Data allenamento
