@@ -29,6 +29,7 @@ import {
   DropletIcon,
   FootstepsIcon,
   GridIcon,
+  MinusIcon,
   PlusIcon,
   UserIcon,
   UtensilsIcon,
@@ -355,9 +356,10 @@ export default function DashboardClient({ initialDate }: { initialDate?: string 
 
   /* ---------- Azioni ---------- */
 
-  async function addGlass() {
+  async function adjustGlasses(delta: 1 | -1) {
     if (!userId || !selectedKey || savingWater) return;
-    const next = Math.min(12, selectedGlasses + 1);
+    const next = Math.max(0, Math.min(12, selectedGlasses + delta));
+    if (next === selectedGlasses) return;
     setWaterByDate((current) => ({ ...current, [selectedKey]: next }));
     setSavingWater(true);
     try {
@@ -486,14 +488,25 @@ export default function DashboardClient({ initialDate }: { initialDate?: string 
               <span className="home-stat-card__icon home-stat-card__icon--dark">
                 <DropletIcon size={18} />
               </span>
-              <button
-                type="button"
-                className="home-stat-card__add"
-                aria-label="Aggiungi un bicchiere d'acqua"
-                onClick={() => void addGlass()}
-              >
-                <PlusIcon size={15} />
-              </button>
+              <div className="home-stat-card__add-group">
+                <button
+                  type="button"
+                  className="home-stat-card__add"
+                  aria-label="Togli un bicchiere d'acqua"
+                  disabled={selectedGlasses <= 0}
+                  onClick={() => void adjustGlasses(-1)}
+                >
+                  <MinusIcon size={15} />
+                </button>
+                <button
+                  type="button"
+                  className="home-stat-card__add"
+                  aria-label="Aggiungi un bicchiere d'acqua"
+                  onClick={() => void adjustGlasses(1)}
+                >
+                  <PlusIcon size={15} />
+                </button>
+              </div>
             </div>
             <p className="home-stat-card__label">Acqua</p>
             <p className="home-stat-card__value">

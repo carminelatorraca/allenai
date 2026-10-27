@@ -1724,6 +1724,15 @@ export default function WorkoutsPage() {
             <p className="workouts-eyebrow">SESSIONE NON INIZIATA</p>
             <h2>{selectedDayInfo?.title ?? "Allenamento"}</h2>
 
+            <label className="workouts-date-field">
+              Data allenamento
+              <input
+                type="date"
+                value={trainingDate}
+                onChange={(event) => setTrainingDate(event.target.value)}
+              />
+            </label>
+
             {selectedDayInfo?.activity_type && selectedDayInfo.activity_type !== "gym" ? (
               <p className="workouts-description">
                 {activityLabel(selectedDayInfo.activity_type)}
@@ -1766,15 +1775,6 @@ export default function WorkoutsPage() {
             ) : null}
 
             <div className="workouts-form">
-              <label>
-                Data allenamento
-                <input
-                  type="date"
-                  value={trainingDate}
-                  onChange={(event) => setTrainingDate(event.target.value)}
-                />
-              </label>
-
               <button
                 className="workouts-button-primary"
                 disabled={!selectedDay || !trainingDate || busy}
