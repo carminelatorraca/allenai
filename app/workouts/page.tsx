@@ -11,7 +11,6 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   TimerIcon,
-  TrashIcon,
 } from "@/components/icons";
 import { estimateSessionCalories } from "@/lib/activity";
 import "./workouts.css";
@@ -91,8 +90,6 @@ type SetDraft = {
   completed: boolean;
 };
 
-type DisplayStatus = "not_started" | "partial" | "completed";
-
 type MesocycleSummary = {
   id: string;
   name: string | null;
@@ -168,7 +165,6 @@ export default function WorkoutsPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [days, setDays] = useState<TrainingDay[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
-  const [displayStatuses, setDisplayStatuses] = useState<Record<string, DisplayStatus>>({});
   const [selectedDay, setSelectedDay] = useState("");
   const [trainingDate, setTrainingDate] = useState("");
   const [mesocycles, setMesocycles] = useState<MesocycleSummary[]>([]);
@@ -192,7 +188,6 @@ export default function WorkoutsPage() {
   const [saveErrors, setSaveErrors] = useState<Record<string, string>>({});
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
-  const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
 
   const [cardioDuration, setCardioDuration] = useState("");
   const [cardioDistance, setCardioDistance] = useState("");
@@ -255,60 +250,7 @@ export default function WorkoutsPage() {
 
     if (error) throw error;
 
-    const loaded = (data ?? []) as Session[];
-    setSessions(loaded);
-
-    const statuses: Record<string, DisplayStatus> = {};
-
-    if (loaded.length) {
-      const { data: exerciseRows, error: exerciseError } = await supabase
-        .from("session_exercises")
-        .select("id,session_id")
-        .eq("user_id", uid)
-        .in("session_id", loaded.map((session) => session.id));
-
-      if (exerciseError) throw exerciseError;
-
-      const allExercises = exerciseRows ?? [];
-      let allSets: {
-        session_exercise_id: string;
-        reps: number | null;
-        weight_kg: number | null;
-        rpe: number | null;
-      }[] = [];
-
-      if (allExercises.length) {
-        const { data: setRows, error: setError } = await supabase
-          .from("performed_sets")
-          .select("session_exercise_id,reps,weight_kg,rpe")
-          .eq("user_id", uid)
-          .in("session_exercise_id", allExercises.map((exercise) => exercise.id));
-
-        if (setError) throw setError;
-        allSets = setRows ?? [];
-      }
-
-      for (const session of loaded) {
-        if (session.status === "completed") {
-          statuses[session.id] = "completed";
-          continue;
-        }
-
-        const exerciseIds = allExercises
-          .filter((exercise) => exercise.session_id === session.id)
-          .map((exercise) => exercise.id);
-
-        const hasData = allSets.some(
-          (set) =>
-            exerciseIds.includes(set.session_exercise_id) &&
-            (set.reps !== null || set.weight_kg !== null || set.rpe !== null),
-        );
-
-        statuses[session.id] = hasData ? "partial" : "not_started";
-      }
-    }
-
-    setDisplayStatuses(statuses);
+    setSessions((data ?? []) as Session[]);
   }, []);
 
   // Carica settimane/giornate di UN mesociclo specifico. Estratta a parte
@@ -1324,46 +1266,6 @@ export default function WorkoutsPage() {
     }
   }
 
-  async function deleteSession(session: Session) {
-    if (!userId) return;
-
-    const confirmed = window.confirm(
-      `Vuoi eliminare la sessione "${session.title}" del ${formatDate(session.performed_at)}? L'operazione non è reversibile.`,
-    );
-
-    if (!confirmed) return;
-
-    setDeletingSessionId(session.id);
-    showSuccess("");
-
-    try {
-      const { error: deleteError } = await supabase
-        .from("workout_sessions")
-        .delete()
-        .eq("id", session.id)
-        .eq("user_id", userId);
-
-      if (deleteError) throw deleteError;
-
-      if (activeSessionRef.current?.id === session.id) {
-        activeSessionRef.current = null;
-        setActiveSession(null);
-        setExercises([]);
-        setSets([]);
-        setDrafts({});
-      }
-
-      showSuccess("Sessione eliminata.");
-      await loadSessions(userId);
-    } catch (err) {
-      showError(
-        err instanceof Error ? err.message : "Impossibile eliminare la sessione.",
-      );
-    } finally {
-      setDeletingSessionId(null);
-    }
-  }
-
   const completedSets = sets.filter((set) => hasValidReps(drafts[set.id])).length;
   const totalSets = sets.length;
   const allSeriesComplete = totalSets > 0 && completedSets === totalSets;
@@ -1751,6 +1653,20 @@ export default function WorkoutsPage() {
                               <strong>Serie {set.set_number}</strong>
 
                               <label>
+                                Kg
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="0.5"
+                                  value={draft.weight_kg}
+                                  onChange={(event) =>
+                                    updateDraft(set.id, "weight_kg", event.target.value)
+                                  }
+                                  onBlur={() => saveOnBlur(set.id)}
+                                />
+                              </label>
+
+                              <label>
                                 Reps
                                 <input
                                   type="number"
@@ -1762,20 +1678,6 @@ export default function WorkoutsPage() {
                                       exerciseName: exercise.exercise_name,
                                       restSeconds: exercise.rest_seconds,
                                     })
-                                  }
-                                  onBlur={() => saveOnBlur(set.id)}
-                                />
-                              </label>
-
-                              <label>
-                                Kg
-                                <input
-                                  type="number"
-                                  min="0"
-                                  step="0.5"
-                                  value={draft.weight_kg}
-                                  onChange={(event) =>
-                                    updateDraft(set.id, "weight_kg", event.target.value)
                                   }
                                   onBlur={() => saveOnBlur(set.id)}
                                 />
@@ -1883,65 +1785,6 @@ export default function WorkoutsPage() {
             </div>
           </section>
         )}
-
-        <section className="workouts-history">
-          <div className="workouts-history-heading">
-            <div>
-              <p className="workouts-eyebrow">IL TUO PERCORSO</p>
-              <h2>Storico sessioni</h2>
-            </div>
-            <span>{sessions.length} sessioni</span>
-          </div>
-
-          {sessions.length === 0 ? (
-            <div className="workouts-empty">
-              Non hai ancora registrato allenamenti.
-            </div>
-          ) : (
-            <div className="workouts-history-list">
-              {sessions.map((session) => {
-                const status =
-                  displayStatuses[session.id] ??
-                  (session.status === "completed" ? "completed" : "not_started");
-
-                const label =
-                  status === "completed"
-                    ? "Completato"
-                    : status === "partial"
-                      ? "Parziale"
-                      : "Non iniziato";
-
-                return (
-                  <div className="workouts-history-item" key={session.id}>
-                    <button
-                      type="button"
-                      className="workouts-history-item__open"
-                      disabled={busy}
-                      onClick={() => userId && void openSession(session, userId)}
-                    >
-                      <div>
-                        <strong>{session.title}</strong>
-                        <span>{formatDate(session.performed_at)}</span>
-                      </div>
-                      <span className={`workouts-status ${status}`}>{label}</span>
-                      <span className="workouts-history-arrow">↗</span>
-                    </button>
-                    <button
-                      type="button"
-                      className="workouts-history-item__delete"
-                      disabled={busy || deletingSessionId === session.id}
-                      onClick={() => void deleteSession(session)}
-                      aria-label="Elimina sessione"
-                      title="Elimina sessione"
-                    >
-                      {deletingSessionId === session.id ? "…" : <TrashIcon size={16} />}
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </section>
       </div>
 
       {restTimer && (

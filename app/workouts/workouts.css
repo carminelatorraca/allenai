@@ -679,6 +679,7 @@
 .workouts-day-tabs {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: 8px;
 }
 
@@ -778,183 +779,6 @@
   margin: 0;
 }
 
-.workouts-history {
-  margin-top: 32px;
-}
-
-.workouts-history-heading {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 15px;
-  margin-bottom: 16px;
-}
-
-.workouts-history-heading h2 {
-  margin: 0;
-  font-size: 1.2rem;
-  font-weight: 760;
-  letter-spacing: -0.035em;
-}
-
-.workouts-history-heading p {
-  margin: 5px 0 0;
-  color: var(--workout-muted);
-  font-size: 0.85rem;
-  line-height: 1.55;
-}
-
-.workouts-history-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.workouts-history-item {
-  display: flex;
-  align-items: stretch;
-  gap: 10px;
-  padding: 10px;
-  border: 1px solid var(--workout-border);
-  border-radius: 14px;
-  background: var(--workout-surface);
-  box-shadow: 0 3px 12px rgba(28, 49, 35, 0.025);
-  transition: border-color 160ms ease, transform 160ms ease;
-}
-
-.workouts-history-item:hover {
-  border-color: var(--ink-green-border);
-}
-
-.workouts-history-item__open {
-  display: flex;
-  min-width: 0;
-  flex: 1;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 7px 8px;
-  border: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-}
-
-.workouts-history-item__open > div:first-child {
-  min-width: 0;
-  flex: 1;
-}
-
-.workouts-history-item__delete {
-  display: inline-flex;
-  flex-shrink: 0;
-  width: 38px;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--ink-red-border);
-  border-radius: 10px;
-  background: var(--ink-red-soft);
-  color: var(--ink-red);
-  font-size: 0.95rem;
-}
-
-.workouts-history-item__delete:disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
-}
-
-.workouts-history-item h3 {
-  margin: 0;
-  font-size: 0.94rem;
-  font-weight: 750;
-  line-height: 1.5;
-  overflow-wrap: anywhere;
-}
-
-.workouts-history-item p {
-  margin: 5px 0 0;
-  color: var(--workout-muted);
-  font-size: 0.81rem;
-  line-height: 1.5;
-}
-
-.workouts-status {
-  display: inline-flex;
-  width: fit-content;
-  align-items: center;
-  gap: 6px;
-  margin-top: 9px;
-  padding: 5px 9px;
-  border: 1px solid var(--workout-border);
-  border-radius: 999px;
-  background: var(--workout-soft);
-  color: var(--workout-muted);
-  font-size: 0.73rem;
-  font-weight: 750;
-}
-
-.workouts-status::before {
-  display: block;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--workout-muted);
-  content: "";
-}
-
-.workouts-status[data-status="completed"] {
-  border-color: var(--ink-green-border);
-  background: var(--workout-green-light);
-  color: var(--workout-green);
-}
-
-.workouts-status[data-status="completed"]::before {
-  background: var(--workout-green);
-}
-
-.workouts-status[data-status="partial"] {
-  border-color: var(--ink-amber-border);
-  background: var(--ink-amber-soft);
-  color: var(--ink-amber);
-}
-
-.workouts-status[data-status="partial"]::before {
-  background: var(--ink-amber);
-}
-
-.workouts-status[data-status="not_started"] {
-  color: var(--workout-muted);
-}
-
-.workouts-history-arrow {
-  display: inline-flex;
-  flex-shrink: 0;
-  min-height: 39px;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  padding: 9px 12px;
-  border: 1px solid var(--workout-border);
-  border-radius: 10px;
-  background: var(--workout-soft);
-  color: var(--workout-text);
-  font-size: 0.81rem;
-  font-weight: 700;
-  transition: background 160ms ease, border-color 160ms ease;
-}
-
-.workouts-history-arrow:hover:not(:disabled) {
-  border-color: var(--ink-green-border);
-  background: var(--workout-green-light);
-  color: var(--workout-green);
-}
-
-.workouts-history-arrow:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
 .workouts-page button:focus-visible,
 .workouts-page a:focus-visible,
 .workouts-page input:focus-visible,
@@ -978,7 +802,7 @@
     grid-template-columns: 1fr 1fr;
     grid-template-areas:
       "serie serie"
-      "reps kg"
+      "kg reps"
       "rpe status";
     column-gap: 14px;
     row-gap: 12px;
@@ -991,11 +815,11 @@
   }
 
   .workouts-set-row > label:nth-of-type(1) {
-    grid-area: reps;
+    grid-area: kg;
   }
 
   .workouts-set-row > label:nth-of-type(2) {
-    grid-area: kg;
+    grid-area: reps;
   }
 
   .workouts-set-row > label:nth-of-type(3) {
@@ -1115,22 +939,6 @@
 
   .workouts-form .workouts-button-primary {
     width: 100%;
-  }
-
-  .workouts-history-heading {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .workouts-history-item {
-    align-items: flex-start;
-    padding: 14px 12px;
-  }
-
-  .workouts-history-arrow {
-    min-height: 36px;
-    padding: 8px 9px;
-    font-size: 0.77rem;
   }
 }
 
