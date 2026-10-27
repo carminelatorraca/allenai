@@ -1229,11 +1229,24 @@ function NutritionPageInner() {
           </div>
         )}
 
+        {!planLoading && !planPreview && (
+          <div className="nutrition-plan-preview nutrition-plan-preview--empty">
+            <h3>Cosa mangiare</h3>
+            <p className="nutrition-no-items">
+              Non hai ancora un piano nutrizionale. Creane uno per vedere qui cosa mangiare ogni
+              giorno della settimana.
+            </p>
+            <Link className="nutrition-secondary" href="/nutrition/plan">
+              Crea un piano
+            </Link>
+          </div>
+        )}
+
         {!planLoading && planPreview && (
           <details className="nutrition-plan-preview" open>
             <summary className="nutrition-panel-heading">
               <div>
-                <h3>Piano settimanale — {planPreview.weekdayLabel}</h3>
+                <h3>Cosa mangiare — {planPreview.weekdayLabel}</h3>
                 <p>{planPreview.planName}</p>
               </div>
               <div

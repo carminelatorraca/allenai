@@ -366,6 +366,24 @@
   background: var(--nut-soft);
 }
 
+.nutrition-plan-preview--empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+}
+
+.nutrition-plan-preview--empty h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 760;
+}
+
+.nutrition-plan-preview--empty .nutrition-no-items {
+  margin: 0;
+}
+
 .nutrition-plan-preview__meal {
   display: flex;
   align-items: center;
