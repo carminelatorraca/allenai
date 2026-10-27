@@ -895,6 +895,25 @@ function NutritionPageInner() {
           </button>
         </section>
 
+        {!planLoading && planPreview && (
+          <div className="nutrition-weekday-pills" role="tablist" aria-label="Giorno del piano">
+            {WEEKDAY_LABEL.map((label, index) => (
+              <button
+                key={label}
+                type="button"
+                role="tab"
+                aria-selected={index === effectiveWeekday}
+                className={`nutrition-weekday-pill${
+                  index === effectiveWeekday ? " nutrition-weekday-pill--active" : ""
+                }`}
+                onClick={() => changePreviewWeekday(index)}
+              >
+                {label.slice(0, 3)}
+              </button>
+            ))}
+          </div>
+        )}
+
         {hasTotals && (
           <div className="nutrition-totals">
             <div>
@@ -926,93 +945,15 @@ function NutritionPageInner() {
           </div>
         )}
 
-        {!planLoading && planPreview && (
-          <details className="nutrition-plan-preview">
-            <summary className="nutrition-panel-heading">
-              <div>
-                <h3>Dal tuo piano — {planPreview.weekdayLabel}</h3>
-                <p>{planPreview.planName}</p>
-              </div>
-              <div
-                className="nutrition-plan-preview__actions"
-                onClick={(event) => event.stopPropagation()}
-              >
-                <label className="nutrition-plan-preview__day-select">
-                  Giorno del piano
-                  <select
-                    value={effectiveWeekday}
-                    onChange={(event) => changePreviewWeekday(Number(event.target.value))}
-                  >
-                    {WEEKDAY_LABEL.map((label, index) => (
-                      <option key={label} value={index}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <Link
-                  className="nutrition-secondary"
-                  href={`/nutrition/plan/${planPreview.planId}?day=${effectiveWeekday}`}
-                >
-                  Apri {WEEKDAY_LABEL[effectiveWeekday]} nel piano
-                </Link>
-              </div>
-              <span className="nutrition-plan-preview__chevron" aria-hidden="true">
-                ›
-              </span>
-            </summary>
-
-            {planPreview.meals.length === 0 ? (
-              <p className="nutrition-no-items">
-                Nessun pasto previsto dal piano per questo giorno della settimana.
-              </p>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  className="nutrition-secondary nutrition-plan-preview__add-all"
-                  disabled={copyingAllDay}
-                  onClick={() => void copyAllPlanMealsToDiary()}
-                >
-                  {copyingAllDay
-                    ? "Aggiungo..."
-                    : `Aggiungi tutta la giornata (${planPreview.meals.length} pasti)`}
-                </button>
-                {planPreview.meals.map((meal) => (
-                <div className="nutrition-plan-preview__meal" key={meal.id}>
-                  <div>
-                    <span className="nutrition-meal__slot">{SLOT_LABEL[toSlot(meal.meal_type)]}</span>
-                    <strong>{meal.title}</strong>
-                    {meal.items.length > 0 && (
-                      <span className="nutrition-note">
-                        {meal.items.map((item) => item.food_name).join(", ")}
-                      </span>
-                    )}
-                  </div>
-                  <button
-                    type="button"
-                    className="nutrition-chip"
-                    disabled={copyingMealId === meal.id}
-                    onClick={() => void copyPlanMealToDiary(meal)}
-                  >
-                    {copyingMealId === meal.id ? "Copio..." : "Aggiungi al diario"}
-                  </button>
-                </div>
-                ))}
-              </>
-            )}
-          </details>
-        )}
-
         {loading ? (
           <p className="nutrition-loading">Caricamento...</p>
         ) : (
           <div className="nutrition-main">
-            {/* ---------- Pasti pianificati ---------- */}
+            {/* ---------- Diario: pasti pianificati e registrati per questo giorno ---------- */}
             <section className="nutrition-panel">
               <div className="nutrition-panel-heading">
                 <div>
-                  <h3>Pasti pianificati</h3>
+                  <h3>Diario</h3>
                   <p>{plannedMeals.length} pasti per questo giorno</p>
                 </div>
                 <button type="button" className="nutrition-primary" onClick={openNewMeal}>
@@ -1258,6 +1199,71 @@ function NutritionPageInner() {
               )}
             </section>
           </div>
+        )}
+
+        {!planLoading && planPreview && (
+          <details className="nutrition-plan-preview" open>
+            <summary className="nutrition-panel-heading">
+              <div>
+                <h3>Piano settimanale — {planPreview.weekdayLabel}</h3>
+                <p>{planPreview.planName}</p>
+              </div>
+              <div
+                className="nutrition-plan-preview__actions"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <Link
+                  className="nutrition-secondary"
+                  href={`/nutrition/plan/${planPreview.planId}?day=${effectiveWeekday}`}
+                >
+                  Apri piano completo
+                </Link>
+              </div>
+              <span className="nutrition-plan-preview__chevron" aria-hidden="true">
+                ›
+              </span>
+            </summary>
+
+            {planPreview.meals.length === 0 ? (
+              <p className="nutrition-no-items">
+                Nessun pasto previsto dal piano per questo giorno della settimana.
+              </p>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className="nutrition-secondary nutrition-plan-preview__add-all"
+                  disabled={copyingAllDay}
+                  onClick={() => void copyAllPlanMealsToDiary()}
+                >
+                  {copyingAllDay
+                    ? "Aggiungo..."
+                    : `Aggiungi tutta la giornata (${planPreview.meals.length} pasti)`}
+                </button>
+                {planPreview.meals.map((meal) => (
+                <div className="nutrition-plan-preview__meal" key={meal.id}>
+                  <div>
+                    <span className="nutrition-meal__slot">{SLOT_LABEL[toSlot(meal.meal_type)]}</span>
+                    <strong>{meal.title}</strong>
+                    {meal.items.length > 0 && (
+                      <span className="nutrition-note">
+                        {meal.items.map((item) => item.food_name).join(", ")}
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    className="nutrition-chip"
+                    disabled={copyingMealId === meal.id}
+                    onClick={() => void copyPlanMealToDiary(meal)}
+                  >
+                    {copyingMealId === meal.id ? "Copio..." : "Aggiungi al diario"}
+                  </button>
+                </div>
+                ))}
+              </>
+            )}
+          </details>
         )}
       </div>
     </AppShell>

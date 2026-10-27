@@ -261,6 +261,38 @@
   font-weight: 750;
 }
 
+/* ---------- Pillole giorno della settimana (pilotano l'anteprima del piano) ---------- */
+
+.nutrition-weekday-pills {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.nutrition-weekday-pill {
+  min-height: 40px;
+  padding: 8px 16px;
+  border: 1px solid var(--nut-border);
+  border-radius: 11px;
+  background: var(--nut-surface);
+  color: var(--nut-text);
+  font-size: 0.86rem;
+  font-weight: 750;
+  transition: border-color 160ms ease, background 160ms ease, color 160ms ease;
+}
+
+.nutrition-weekday-pill:hover {
+  border-color: var(--nut-border-hover);
+}
+
+.nutrition-weekday-pill--active {
+  border-color: var(--nut-accent);
+  background: var(--nut-accent);
+  color: var(--nut-on-accent);
+}
+
 /* ---------- Totali ---------- */
 
 .nutrition-totals {
@@ -325,7 +357,9 @@
 
 .nutrition-plan-preview {
   min-width: 0;
-  margin-bottom: 20px;
+  width: 100%;
+  max-width: 760px;
+  margin: 20px auto 0;
   padding: 20px 22px;
   border: 1px solid var(--nut-accent);
   border-radius: 18px;
@@ -397,26 +431,6 @@ summary.nutrition-panel-heading::-webkit-details-marker {
   align-items: center;
   flex-wrap: wrap;
   gap: 10px;
-}
-
-.nutrition-plan-preview__day-select {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  font-size: 0.72rem;
-  font-weight: 650;
-  color: var(--nut-muted);
-}
-
-.nutrition-plan-preview__day-select select {
-  min-height: 36px;
-  padding: 6px 10px;
-  border: 1px solid var(--nut-border);
-  border-radius: 9px;
-  background: var(--nut-surface);
-  color: inherit;
-  font: inherit;
-  font-size: 0.85rem;
 }
 
 .nutrition-panel-actions {
