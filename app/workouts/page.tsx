@@ -167,7 +167,10 @@ export default function WorkoutsPage() {
     totalSeconds: number;
     endAt: number;
   } | null>(null);
-  const [restTimerNow, setRestTimerNow] = useState(() => Date.now());
+  // 0, non Date.now(): un useState inizializzato con l'ora corrente viene
+  // letto durante il prerender e Next.js lo rifiuta come valore instabile.
+  // Il valore reale arriva dagli effect sotto, che girano solo nel browser.
+  const [restTimerNow, setRestTimerNow] = useState(0);
   const restTimerDoneRef = useRef(false);
 
   const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
@@ -556,6 +559,7 @@ export default function WorkoutsPage() {
         endAt: number;
       };
       if (parsed && typeof parsed.endAt === "number" && Date.now() - parsed.endAt < 5 * 60 * 1000) {
+        setRestTimerNow(Date.now());
         setRestTimer(parsed);
       } else {
         localStorage.removeItem(REST_TIMER_STORAGE_KEY);
