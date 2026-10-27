@@ -1,0 +1,140 @@
+.exercise-progress {
+  margin-top: 18px;
+}
+
+.exercise-progress__filters {
+  display: flex;
+  margin-bottom: 16px;
+}
+
+.exercise-progress__filters label {
+  display: flex;
+  min-width: 220px;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--ink-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.exercise-progress__filters select {
+  min-height: 42px;
+  padding: 9px 11px;
+  border: 1px solid var(--ink-border);
+  border-radius: 10px;
+  background: var(--ink-bg);
+  color: var(--ink-text);
+  font-size: 0.88rem;
+}
+
+.exercise-progress__chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  touch-action: none;
+}
+
+.exercise-progress__grid {
+  stroke: var(--ink-border);
+  stroke-width: 1;
+}
+
+.exercise-progress__axis-label {
+  fill: var(--ink-muted);
+  font-size: 10px;
+}
+
+.exercise-progress__line {
+  fill: none;
+  stroke: var(--ink-green);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.exercise-progress__dot {
+  fill: var(--ink-green);
+  stroke: var(--ink-surface);
+  stroke-width: 2;
+}
+
+.exercise-progress__crosshair {
+  stroke: var(--ink-border);
+  stroke-width: 1;
+}
+
+.exercise-progress__end-label {
+  fill: var(--ink-text);
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.exercise-progress__tooltip-box {
+  fill: var(--ink-surface);
+  stroke: var(--ink-border);
+  stroke-width: 1;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.18));
+}
+
+.exercise-progress__tooltip-value {
+  fill: var(--ink-text);
+  font-size: 12px;
+  font-weight: 760;
+}
+
+.exercise-progress__tooltip-date {
+  fill: var(--ink-muted);
+  font-size: 10px;
+}
+
+.exercise-progress__history {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--ink-border);
+}
+
+.exercise-progress__history-title {
+  margin: 0 0 10px;
+  color: var(--ink-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.exercise-progress__history-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--ink-border);
+  font-size: 0.84rem;
+}
+
+.exercise-progress__history-row:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.exercise-progress__history-date {
+  flex-shrink: 0;
+  color: var(--ink-text);
+  font-weight: 700;
+}
+
+.exercise-progress__history-sets {
+  color: var(--ink-muted);
+  text-align: right;
+}
+
+@media (max-width: 640px) {
+  .exercise-progress__history-row {
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .exercise-progress__history-sets {
+    text-align: left;
+  }
+}

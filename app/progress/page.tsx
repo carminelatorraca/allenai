@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import AppShell from "@/components/AppShell";
+import ExerciseProgress from "@/components/ExerciseProgress";
 import { ChartIcon, TargetIcon } from "@/components/icons";
 import "./progress.css";
 
@@ -27,6 +28,7 @@ const GOAL_LABEL: Record<string, string> = {
 
 export default function ProgressPage() {
   const router = useRouter();
+  const [userId, setUserId] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -43,6 +45,8 @@ export default function ProgressPage() {
         router.replace("/");
         return;
       }
+
+      setUserId(sessionData.session.user.id);
 
       const { data, error: profileError } = await supabase
         .from("profiles")
@@ -136,6 +140,8 @@ export default function ProgressPage() {
             </div>
           </>
         )}
+
+        {!loading && userId && <ExerciseProgress userId={userId} />}
       </div>
     </AppShell>
   );
