@@ -1,0 +1,59 @@
+.mini-line-chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  touch-action: none;
+}
+
+.mini-line-chart__grid {
+  stroke: var(--ink-border);
+  stroke-width: 1;
+}
+
+.mini-line-chart__axis-label {
+  fill: var(--ink-muted);
+  font-size: 10px;
+}
+
+.mini-line-chart__line {
+  fill: none;
+  stroke: var(--ink-green);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.mini-line-chart__dot {
+  fill: var(--ink-green);
+  stroke: var(--ink-surface);
+  stroke-width: 2;
+}
+
+.mini-line-chart__crosshair {
+  stroke: var(--ink-border);
+  stroke-width: 1;
+}
+
+.mini-line-chart__end-label {
+  fill: var(--ink-text);
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.mini-line-chart__tooltip-box {
+  fill: var(--ink-surface);
+  stroke: var(--ink-border);
+  stroke-width: 1;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.18));
+}
+
+.mini-line-chart__tooltip-value {
+  fill: var(--ink-text);
+  font-size: 12px;
+  font-weight: 760;
+}
+
+.mini-line-chart__tooltip-date {
+  fill: var(--ink-muted);
+  font-size: 10px;
+}

@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import AppShell from "@/components/AppShell";
 import ExerciseProgress from "@/components/ExerciseProgress";
-import { ChartIcon, TargetIcon } from "@/components/icons";
+import WeightHistory from "@/components/WeightHistory";
+import { ChartIcon } from "@/components/icons";
 import "./progress.css";
 
 type Profile = {
@@ -121,27 +122,20 @@ export default function ProgressPage() {
                 <strong>{GOAL_LABEL[profile.goal ?? ""] ?? "Non impostato"}</strong>
               </div>
             </div>
-
-            <div className="progress-card">
-              <div className="progress-card__header">
-                <TargetIcon size={18} />
-                <h3>Storico peso e misure</h3>
-              </div>
-              <p className="progress-note">
-                Lo storico nel tempo (grafico peso, misurazioni corporee) arriverà
-                presto: al momento viene mostrato solo l&apos;ultimo valore salvato nel
-                tuo profilo, il {profile.updated_at
-                  ? new Date(profile.updated_at).toLocaleDateString("it-IT")
-                  : "—"}.
-              </p>
-              <button type="button" className="progress-button-outline" onClick={() => router.push("/profile")}>
-                Aggiorna peso nel profilo
-              </button>
-            </div>
           </>
         )}
 
-        {!loading && userId && <ExerciseProgress userId={userId} />}
+        {!loading && userId && (
+          <>
+            <WeightHistory
+              userId={userId}
+              onLatestWeightChange={(weightKg) =>
+                setProfile((current) => (current ? { ...current, current_weight_kg: weightKg } : current))
+              }
+            />
+            <ExerciseProgress userId={userId} />
+          </>
+        )}
       </div>
     </AppShell>
   );

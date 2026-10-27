@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import MiniLineChart from "./MiniLineChart";
 import "./exercise-progress.css";
+import "./progress-history.css";
 
 type SetRow = {
   session_exercise_id: string;
@@ -17,19 +19,6 @@ type ExercisePoint = {
   value: number;
   sets: { set_number: number; reps: number | null; weight_kg: number | null }[];
 };
-
-const VBW = 640;
-const VBH = 230;
-const MARGIN = { top: 28, right: 14, bottom: 30, left: 38 };
-const PLOT_W = VBW - MARGIN.left - MARGIN.right;
-const PLOT_H = VBH - MARGIN.top - MARGIN.bottom;
-
-function formatShortDate(date: string) {
-  return new Date(`${date}T12:00:00`).toLocaleDateString("it-IT", {
-    day: "numeric",
-    month: "short",
-  });
-}
 
 function formatLongDate(date: string) {
   return new Date(`${date}T12:00:00`).toLocaleDateString("it-IT", {
@@ -50,9 +39,6 @@ export default function ExerciseProgress({ userId }: { userId: string }) {
   const [metricIsWeight, setMetricIsWeight] = useState(true);
   const [loadingNames, setLoadingNames] = useState(true);
   const [loadingPoints, setLoadingPoints] = useState(false);
-  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
-
-  const svgRef = useRef<SVGSVGElement | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -89,7 +75,6 @@ export default function ExerciseProgress({ userId }: { userId: string }) {
 
     async function loadPoints() {
       setLoadingPoints(true);
-      setHoverIndex(null);
 
       const { data: exerciseRows } = await supabase
         .from("session_exercises")
@@ -183,62 +168,11 @@ export default function ExerciseProgress({ userId }: { userId: string }) {
     };
   }, [userId, selectedExercise]);
 
-  const chart = useMemo(() => {
-    if (!points.length) return null;
-
-    const values = points.map((point) => point.value);
-    const rawMin = Math.min(...values);
-    const rawMax = Math.max(...values);
-    const padding = rawMax === rawMin ? Math.max(1, rawMax * 0.1) : (rawMax - rawMin) * 0.15;
-    const yMin = Math.max(0, rawMin - padding);
-    const yMax = rawMax + padding;
-
-    const xForIndex = (index: number) =>
-      points.length === 1
-        ? MARGIN.left + PLOT_W / 2
-        : MARGIN.left + (index / (points.length - 1)) * PLOT_W;
-
-    const yForValue = (value: number) =>
-      MARGIN.top + (1 - (value - yMin) / (yMax - yMin || 1)) * PLOT_H;
-
-    const coords = points.map((point, index) => ({
-      x: xForIndex(index),
-      y: yForValue(point.value),
-      point,
-    }));
-
-    const linePath = coords
-      .map((coord, index) => `${index === 0 ? "M" : "L"}${coord.x.toFixed(1)},${coord.y.toFixed(1)}`)
-      .join(" ");
-
-    const gridValues = [yMin, (yMin + yMax) / 2, yMax];
-
-    return { coords, linePath, gridValues, yMin, yMax };
-  }, [points]);
-
-  function handlePointerMove(event: React.PointerEvent<SVGSVGElement>) {
-    if (!chart || !svgRef.current) return;
-
-    const rect = svgRef.current.getBoundingClientRect();
-    const scaleX = VBW / rect.width;
-    const xInViewBox = (event.clientX - rect.left) * scaleX;
-
-    let nearest = 0;
-    let nearestDistance = Infinity;
-    chart.coords.forEach((coord, index) => {
-      const distance = Math.abs(coord.x - xInViewBox);
-      if (distance < nearestDistance) {
-        nearestDistance = distance;
-        nearest = index;
-      }
-    });
-
-    setHoverIndex(nearest);
-  }
-
   const unit = metricIsWeight ? "kg" : "reps";
-  const hovered = hoverIndex !== null ? points[hoverIndex] : null;
-  const hoveredCoord = hoverIndex !== null && chart ? chart.coords[hoverIndex] : null;
+  const chartPoints = useMemo(
+    () => points.map((point) => ({ key: point.sessionId, date: point.date, value: point.value })),
+    [points],
+  );
 
   return (
     <div className="progress-card exercise-progress">
@@ -278,104 +212,16 @@ export default function ExerciseProgress({ userId }: { userId: string }) {
             </p>
           ) : (
             <>
-              <svg
-                ref={svgRef}
-                className="exercise-progress__chart"
-                viewBox={`0 0 ${VBW} ${VBH}`}
-                onPointerMove={handlePointerMove}
-                onPointerLeave={() => setHoverIndex(null)}
-              >
-                {chart?.gridValues.map((value, index) => {
-                  const y = MARGIN.top + (1 - (value - chart.yMin) / (chart.yMax - chart.yMin || 1)) * PLOT_H;
-                  return (
-                    <g key={index}>
-                      <line
-                        x1={MARGIN.left}
-                        x2={VBW - MARGIN.right}
-                        y1={y}
-                        y2={y}
-                        className="exercise-progress__grid"
-                      />
-                      <text x={MARGIN.left - 8} y={y} className="exercise-progress__axis-label" textAnchor="end" dominantBaseline="middle">
-                        {niceValue(value)}
-                      </text>
-                    </g>
-                  );
-                })}
+              <MiniLineChart points={chartPoints} unit={unit} />
 
-                {chart && (
-                  <>
-                    <text
-                      x={MARGIN.left}
-                      y={VBH - 8}
-                      className="exercise-progress__axis-label"
-                      textAnchor="start"
-                    >
-                      {formatShortDate(points[0].date)}
-                    </text>
-                    <text
-                      x={VBW - MARGIN.right}
-                      y={VBH - 8}
-                      className="exercise-progress__axis-label"
-                      textAnchor="end"
-                    >
-                      {formatShortDate(points[points.length - 1].date)}
-                    </text>
-
-                    <path d={chart.linePath} className="exercise-progress__line" />
-
-                    {hoveredCoord && (
-                      <line
-                        x1={hoveredCoord.x}
-                        x2={hoveredCoord.x}
-                        y1={MARGIN.top}
-                        y2={VBH - MARGIN.bottom}
-                        className="exercise-progress__crosshair"
-                      />
-                    )}
-
-                    {chart.coords.map((coord, index) => (
-                      <circle
-                        key={coord.point.sessionId}
-                        cx={coord.x}
-                        cy={coord.y}
-                        r={index === hoverIndex || index === chart.coords.length - 1 ? 5 : 4}
-                        className="exercise-progress__dot"
-                      />
-                    ))}
-
-                    <text
-                      x={chart.coords[chart.coords.length - 1].x}
-                      y={chart.coords[chart.coords.length - 1].y - 12}
-                      className="exercise-progress__end-label"
-                      textAnchor="end"
-                    >
-                      {niceValue(points[points.length - 1].value)} {unit}
-                    </text>
-
-                    {hovered && hoveredCoord && (
-                      <g transform={`translate(${Math.min(Math.max(hoveredCoord.x, MARGIN.left + 55), VBW - MARGIN.right - 55)}, ${Math.max(hoveredCoord.y - 44, MARGIN.top)})`}>
-                        <rect x={-55} y={-26} width={110} height={40} rx={8} className="exercise-progress__tooltip-box" />
-                        <text x={0} y={-10} textAnchor="middle" className="exercise-progress__tooltip-value">
-                          {niceValue(hovered.value)} {unit}
-                        </text>
-                        <text x={0} y={6} textAnchor="middle" className="exercise-progress__tooltip-date">
-                          {formatShortDate(hovered.date)}
-                        </text>
-                      </g>
-                    )}
-                  </>
-                )}
-              </svg>
-
-              <div className="exercise-progress__history">
-                <p className="exercise-progress__history-title">Storico</p>
+              <div className="progress-history">
+                <p className="progress-history__title">Storico</p>
                 {[...points].reverse().map((point) => (
-                  <div className="exercise-progress__history-row" key={point.sessionId}>
-                    <span className="exercise-progress__history-date">
+                  <div className="progress-history__row" key={point.sessionId}>
+                    <span className="progress-history__primary">
                       {formatLongDate(point.date)}
                     </span>
-                    <span className="exercise-progress__history-sets">
+                    <span className="progress-history__secondary">
                       {point.sets
                         .map((set) =>
                           set.weight_kg !== null
