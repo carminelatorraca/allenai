@@ -223,6 +223,13 @@ export default function PlanDetail({
   const [generateProgress, setGenerateProgress] = useState("");
   const pdfInputRef = useRef<HTMLInputElement>(null);
 
+  // Giorno indicato da ?day=N nell'URL (link diretto dal diario alimentare):
+  // apre e scrolla a quel giorno una sola volta, appena i giorni sono caricati.
+  const targetWeekdayRef = useRef<number | null>(null);
+  const scrolledToTargetRef = useRef(false);
+  const dayElementsRef = useRef<Record<number, HTMLDetailsElement | null>>({});
+  const [highlightWeekday, setHighlightWeekday] = useState<number | null>(null);
+
   const loadPlan = useCallback(
     async (uid: string, options?: { silent?: boolean }) => {
       if (!options?.silent) setLoading(true);
@@ -315,6 +322,32 @@ export default function PlanDetail({
       active = false;
     };
   }, [loadPlan]);
+
+  // Legge /nutrition/plan/[id]?day=N, passato dal diario alimentare per
+  // puntare direttamente al giorno della settimana che lo ha generato.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const day = params.get("day");
+    if (day !== null && /^[0-6]$/.test(day)) {
+      targetWeekdayRef.current = Number(day);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (targetWeekdayRef.current === null || !days.length || scrolledToTargetRef.current) return;
+
+    const weekday = targetWeekdayRef.current;
+    const element = dayElementsRef.current[weekday];
+    if (!element) return;
+
+    scrolledToTargetRef.current = true;
+    element.open = true;
+    element.scrollIntoView({ behavior: "smooth", block: "start" });
+    setHighlightWeekday(weekday);
+
+    const timer = setTimeout(() => setHighlightWeekday(null), 2200);
+    return () => clearTimeout(timer);
+  }, [days]);
 
   function openNewMeal(dayId: string) {
     const day = days.find((d) => d.id === dayId);
@@ -1029,7 +1062,14 @@ export default function PlanDetail({
             const totals = sumMacros(day.meals.flatMap((meal) => meal.items));
 
             return (
-              <details className="pdetail-day" key={day.id} open={day.meals.length > 0}>
+              <details
+                className={`pdetail-day${highlightWeekday === day.weekday ? " pdetail-day--highlighted" : ""}`}
+                key={day.id}
+                open={day.meals.length > 0}
+                ref={(element) => {
+                  dayElementsRef.current[day.weekday] = element;
+                }}
+              >
                 <summary>
                   <span>{WEEKDAY_LABEL[day.weekday]}</span>
                   <span className="pdetail-day__meta">

@@ -91,6 +91,12 @@
   border-radius: var(--ink-radius-lg);
   background: var(--ink-surface);
   box-shadow: var(--ink-shadow);
+  transition: border-color 400ms ease, box-shadow 400ms ease;
+}
+
+.pdetail-day--highlighted {
+  border-color: var(--ink-green-border);
+  box-shadow: 0 0 0 3px var(--ink-green-soft);
 }
 
 .pdetail-day summary {

@@ -203,6 +203,8 @@ function NutritionPageInner() {
   );
   const previewWeekday =
     previewOverride && previewOverride.date === selectedDate ? previewOverride.weekday : null;
+  const effectiveWeekday =
+    previewWeekday ?? (new Date(`${selectedDate}T12:00:00`).getDay() + 6) % 7;
 
   const loadPlanPreview = useCallback(async (uid: string, dateKey: string, weekdayOverride?: number) => {
     setPlanLoading(true);
@@ -938,9 +940,7 @@ function NutritionPageInner() {
                 <label className="nutrition-plan-preview__day-select">
                   Giorno del piano
                   <select
-                    value={
-                      previewWeekday ?? (new Date(`${selectedDate}T12:00:00`).getDay() + 6) % 7
-                    }
+                    value={effectiveWeekday}
                     onChange={(event) => changePreviewWeekday(Number(event.target.value))}
                   >
                     {WEEKDAY_LABEL.map((label, index) => (
@@ -950,8 +950,11 @@ function NutritionPageInner() {
                     ))}
                   </select>
                 </label>
-                <Link className="nutrition-secondary" href={`/nutrition/plan/${planPreview.planId}`}>
-                  Apri piano
+                <Link
+                  className="nutrition-secondary"
+                  href={`/nutrition/plan/${planPreview.planId}?day=${effectiveWeekday}`}
+                >
+                  Apri {WEEKDAY_LABEL[effectiveWeekday]} nel piano
                 </Link>
               </div>
               <span className="nutrition-plan-preview__chevron" aria-hidden="true">
