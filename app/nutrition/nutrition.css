@@ -397,15 +397,55 @@
   border-top: 0;
 }
 
-.nutrition-plan-preview__meal > div {
+.nutrition-plan-preview__meal-info {
   display: flex;
   min-width: 0;
+  flex: 1;
   flex-direction: column;
   gap: 2px;
 }
 
 .nutrition-plan-preview__meal strong {
   font-size: 0.92rem;
+}
+
+.nutrition-plan-preview__meal-actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+}
+
+.nutrition-icon-chip {
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--nut-border);
+  border-radius: 9px;
+  background: var(--nut-surface);
+  color: var(--nut-text);
+}
+
+.nutrition-icon-chip:hover {
+  border-color: var(--nut-border-hover);
+}
+
+.nutrition-icon-chip--danger {
+  border-color: var(--nut-red-border);
+  background: var(--nut-red-soft);
+  color: var(--nut-red);
+}
+
+.nutrition-plan-preview__footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--nut-border);
 }
 
 .nutrition-panel-heading {
@@ -666,10 +706,6 @@ label.nutrition-secondary {
   font-size: 0.72rem;
 }
 
-.nutrition-plan-preview__add-all {
-  margin-bottom: 14px;
-}
-
 .nutrition-item-actions {
   display: flex;
   flex-wrap: wrap;
@@ -921,6 +957,23 @@ label.nutrition-secondary {
 
   .nutrition-day-heading h2 {
     font-size: 0.95rem;
+  }
+
+  .nutrition-plan-preview__meal {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .nutrition-plan-preview__meal-actions {
+    justify-content: flex-end;
+  }
+
+  .nutrition-plan-preview__footer {
+    flex-direction: column;
+  }
+
+  .nutrition-plan-preview__footer button {
+    width: 100%;
   }
 }
 

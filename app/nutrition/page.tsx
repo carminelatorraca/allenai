@@ -7,7 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import AppShell from "@/components/AppShell";
 import FoodAlternativeSearch, { type ReplacementItem } from "@/components/FoodAlternativeSearch";
-import { CheckIcon, ChevronDownIcon } from "@/components/icons";
+import { CheckIcon, ChevronDownIcon, PencilIcon, TrashIcon } from "@/components/icons";
 import { getExtraDailyTrainingCalories } from "@/lib/activity";
 import {
   MEAL_STATUS_LABEL,
@@ -49,7 +49,40 @@ type PlanPreview = {
   planId: string;
   planName: string;
   weekdayLabel: string;
+  planDayId: string | null;
   meals: PlanPreviewMeal[];
+};
+
+type PlanItemDraft = {
+  food_name: string;
+  quantity_g: string;
+  calories: string;
+  protein_g: string;
+  carbs_g: string;
+  fat_g: string;
+};
+
+type PlanMealFormState = {
+  meal_type: string;
+  title: string;
+  instructions: string;
+  items: PlanItemDraft[];
+};
+
+const emptyPlanItemDraft: PlanItemDraft = {
+  food_name: "",
+  quantity_g: "",
+  calories: "",
+  protein_g: "",
+  carbs_g: "",
+  fat_g: "",
+};
+
+const emptyPlanMealForm: PlanMealFormState = {
+  meal_type: "breakfast",
+  title: "",
+  instructions: "",
+  items: [emptyPlanItemDraft],
 };
 
 const WEEKDAY_LABEL = [
@@ -200,6 +233,10 @@ function NutritionPageInner() {
   const [copyingAllDay, setCopyingAllDay] = useState(false);
   const [swapSearchKey, setSwapSearchKey] = useState<string | null>(null);
   const [expandedMealId, setExpandedMealId] = useState<string | null>(null);
+  const [showPlanMealForm, setShowPlanMealForm] = useState(false);
+  const [editingPlanMeal, setEditingPlanMeal] = useState<PlanPreviewMeal | null>(null);
+  const [planMealForm, setPlanMealForm] = useState<PlanMealFormState>(emptyPlanMealForm);
+  const [savingPlanMeal, setSavingPlanMeal] = useState(false);
   const [previewOverride, setPreviewOverride] = useState<{ date: string; weekday: number } | null>(
     null,
   );
@@ -253,7 +290,13 @@ function NutritionPageInner() {
         .maybeSingle();
 
       if (dayError || !dayData) {
-        setPlanPreview({ planId: plan.id, planName: plan.name, weekdayLabel: WEEKDAY_LABEL[weekday], meals: [] });
+        setPlanPreview({
+          planId: plan.id,
+          planName: plan.name,
+          weekdayLabel: WEEKDAY_LABEL[weekday],
+          planDayId: null,
+          meals: [],
+        });
         return;
       }
 
@@ -267,6 +310,7 @@ function NutritionPageInner() {
         planId: plan.id,
         planName: plan.name,
         weekdayLabel: WEEKDAY_LABEL[weekday],
+        planDayId: dayData.id,
         meals: rawMeals
           .map((meal) => {
             const { nutrition_plan_meal_items, ...rest } = meal;
@@ -365,6 +409,214 @@ function NutritionPageInner() {
       setError(errorMessage(err));
     } finally {
       setCopyingAllDay(false);
+    }
+  }
+
+  function openNewPlanMeal() {
+    setEditingPlanMeal(null);
+    setPlanMealForm(emptyPlanMealForm);
+    setShowPlanMealForm(true);
+    setError("");
+  }
+
+  function openEditPlanMeal(meal: PlanPreviewMeal) {
+    setEditingPlanMeal(meal);
+    setPlanMealForm({
+      meal_type: meal.meal_type,
+      title: meal.title,
+      instructions: meal.instructions ?? "",
+      items: meal.items.length
+        ? meal.items.map((item) => ({
+            food_name: item.food_name,
+            quantity_g: item.quantity_g.toString(),
+            calories: item.calories.toString(),
+            protein_g: item.protein_g.toString(),
+            carbs_g: item.carbs_g.toString(),
+            fat_g: item.fat_g.toString(),
+          }))
+        : [emptyPlanItemDraft],
+    });
+    setShowPlanMealForm(true);
+    setError("");
+  }
+
+  function updatePlanMealField<K extends keyof PlanMealFormState>(key: K, value: PlanMealFormState[K]) {
+    setPlanMealForm((current) => ({ ...current, [key]: value }));
+  }
+
+  function updatePlanItemDraft(index: number, field: keyof PlanItemDraft, value: string) {
+    setPlanMealForm((current) => ({
+      ...current,
+      items: current.items.map((item, itemIndex) =>
+        itemIndex === index ? { ...item, [field]: value } : item,
+      ),
+    }));
+  }
+
+  function addPlanItemRow() {
+    setPlanMealForm((current) => ({
+      ...current,
+      items: [...current.items, emptyPlanItemDraft],
+    }));
+  }
+
+  function removePlanItemRow(index: number) {
+    setPlanMealForm((current) => ({
+      ...current,
+      items: current.items.filter((_, itemIndex) => itemIndex !== index),
+    }));
+  }
+
+  async function savePlanMeal(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!userId || !planPreview?.planDayId) return;
+
+    const planDayId = planPreview.planDayId;
+    const title = planMealForm.title.trim();
+
+    if (!title) {
+      setError("Inserisci il nome del pasto.");
+      return;
+    }
+
+    const parsedItems: {
+      food_name: string;
+      quantity_g: number;
+      calories: number;
+      protein_g: number;
+      carbs_g: number;
+      fat_g: number;
+      sort_order: number;
+    }[] = [];
+
+    for (const item of planMealForm.items) {
+      if (!item.food_name.trim()) continue;
+
+      const quantity = parseNonNegative(item.quantity_g);
+      const calories = parseNonNegative(item.calories);
+      const protein = parseNonNegative(item.protein_g);
+      const carbs = parseNonNegative(item.carbs_g);
+      const fat = parseNonNegative(item.fat_g);
+
+      if (
+        quantity === null ||
+        calories === null ||
+        protein === null ||
+        carbs === null ||
+        fat === null
+      ) {
+        setError(`Controlla i valori numerici per "${item.food_name.trim()}".`);
+        return;
+      }
+
+      parsedItems.push({
+        food_name: item.food_name.trim(),
+        quantity_g: quantity,
+        calories,
+        protein_g: protein,
+        carbs_g: carbs,
+        fat_g: fat,
+        sort_order: parsedItems.length,
+      });
+    }
+
+    setSavingPlanMeal(true);
+    setError("");
+    setNotice("");
+
+    try {
+      let mealId: string;
+
+      if (editingPlanMeal) {
+        const { error: updateError } = await supabase
+          .from("nutrition_plan_meals")
+          .update({
+            meal_type: planMealForm.meal_type,
+            title,
+            instructions: planMealForm.instructions.trim() || null,
+          })
+          .eq("id", editingPlanMeal.id)
+          .eq("user_id", userId);
+
+        if (updateError) throw updateError;
+
+        mealId = editingPlanMeal.id;
+
+        const { error: deleteItemsError } = await supabase
+          .from("nutrition_plan_meal_items")
+          .delete()
+          .eq("plan_meal_id", mealId);
+
+        if (deleteItemsError) throw deleteItemsError;
+      } else {
+        const { data: created, error: insertError } = await supabase
+          .from("nutrition_plan_meals")
+          .insert({
+            plan_day_id: planDayId,
+            user_id: userId,
+            meal_type: planMealForm.meal_type,
+            title,
+            instructions: planMealForm.instructions.trim() || null,
+            sort_order: planPreview.meals.length,
+          })
+          .select("id")
+          .single();
+
+        if (insertError || !created) {
+          throw new Error(insertError?.message ?? "Impossibile creare il pasto.");
+        }
+
+        mealId = created.id;
+      }
+
+      if (parsedItems.length > 0) {
+        const { error: insertItemsError } = await supabase
+          .from("nutrition_plan_meal_items")
+          .insert(parsedItems.map((item) => ({ ...item, plan_meal_id: mealId, user_id: userId })));
+
+        if (insertItemsError) throw insertItemsError;
+      }
+
+      setShowPlanMealForm(false);
+      setNotice(editingPlanMeal ? "Pasto del piano aggiornato." : "Pasto aggiunto al piano.");
+      await loadPlanPreview(userId, selectedDate, effectiveWeekday);
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setSavingPlanMeal(false);
+    }
+  }
+
+  async function deletePlanMeal(meal: PlanPreviewMeal) {
+    if (!userId) return;
+
+    const confirmed = window.confirm(`Vuoi eliminare "${meal.title}" dal piano?`);
+    if (!confirmed) return;
+
+    setError("");
+    setNotice("");
+
+    try {
+      const { error: deleteItemsError } = await supabase
+        .from("nutrition_plan_meal_items")
+        .delete()
+        .eq("plan_meal_id", meal.id);
+
+      if (deleteItemsError) throw deleteItemsError;
+
+      const { error: deleteMealError } = await supabase
+        .from("nutrition_plan_meals")
+        .delete()
+        .eq("id", meal.id)
+        .eq("user_id", userId);
+
+      if (deleteMealError) throw deleteMealError;
+
+      setNotice("Pasto eliminato dal piano.");
+      await loadPlanPreview(userId, selectedDate, effectiveWeekday);
+    } catch (err) {
+      setError(errorMessage(err));
     }
   }
 
@@ -1253,11 +1505,8 @@ function NutritionPageInner() {
                 className="nutrition-plan-preview__actions"
                 onClick={(event) => event.stopPropagation()}
               >
-                <Link
-                  className="nutrition-secondary"
-                  href={`/nutrition/plan/${planPreview.planId}?day=${effectiveWeekday}`}
-                >
-                  Apri piano completo
+                <Link className="nutrition-secondary" href="/nutrition/plan">
+                  AI, import, altri piani
                 </Link>
               </div>
               <ChevronDownIcon size={18} className="nutrition-plan-preview__chevron" />
@@ -1268,20 +1517,9 @@ function NutritionPageInner() {
                 Nessun pasto previsto dal piano per questo giorno della settimana.
               </p>
             ) : (
-              <>
-                <button
-                  type="button"
-                  className="nutrition-secondary nutrition-plan-preview__add-all"
-                  disabled={copyingAllDay}
-                  onClick={() => void copyAllPlanMealsToDiary()}
-                >
-                  {copyingAllDay
-                    ? "Aggiungo..."
-                    : `Aggiungi tutta la giornata (${planPreview.meals.length} pasti)`}
-                </button>
-                {planPreview.meals.map((meal) => (
+              planPreview.meals.map((meal) => (
                 <div className="nutrition-plan-preview__meal" key={meal.id}>
-                  <div>
+                  <div className="nutrition-plan-preview__meal-info">
                     <span className="nutrition-meal__slot">{SLOT_LABEL[toSlot(meal.meal_type)]}</span>
                     <strong>{meal.title}</strong>
                     {meal.items.length > 0 && (
@@ -1290,18 +1528,178 @@ function NutritionPageInner() {
                       </span>
                     )}
                   </div>
-                  <button
-                    type="button"
-                    className="nutrition-chip"
-                    disabled={copyingMealId === meal.id}
-                    onClick={() => void copyPlanMealToDiary(meal)}
-                  >
-                    {copyingMealId === meal.id ? "Copio..." : "Aggiungi al diario"}
+                  <div className="nutrition-plan-preview__meal-actions">
+                    <button
+                      type="button"
+                      className="nutrition-chip"
+                      disabled={copyingMealId === meal.id}
+                      onClick={() => void copyPlanMealToDiary(meal)}
+                    >
+                      {copyingMealId === meal.id ? "Copio..." : "Aggiungi al diario"}
+                    </button>
+                    <button
+                      type="button"
+                      className="nutrition-icon-chip"
+                      aria-label={`Modifica ${meal.title}`}
+                      onClick={() => openEditPlanMeal(meal)}
+                    >
+                      <PencilIcon size={14} />
+                    </button>
+                    <button
+                      type="button"
+                      className="nutrition-icon-chip nutrition-icon-chip--danger"
+                      aria-label={`Elimina ${meal.title}`}
+                      onClick={() => void deletePlanMeal(meal)}
+                    >
+                      <TrashIcon size={14} />
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+
+            {showPlanMealForm && (
+              <form className="nutrition-form-panel nutrition-form" onSubmit={savePlanMeal}>
+                <h4>{editingPlanMeal ? "Modifica pasto del piano" : `Nuovo pasto per ${planPreview.weekdayLabel}`}</h4>
+
+                <div className="nutrition-form-grid">
+                  <label>
+                    Momento del pasto
+                    <select
+                      value={planMealForm.meal_type}
+                      onChange={(event) => updatePlanMealField("meal_type", event.target.value)}
+                    >
+                      {SLOT_ORDER.map((slot) => (
+                        <option key={slot} value={slot}>
+                          {SLOT_LABEL[slot]}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label>
+                    Nome del pasto *
+                    <input
+                      value={planMealForm.title}
+                      onChange={(event) => updatePlanMealField("title", event.target.value)}
+                      placeholder="Es. Pollo e riso"
+                      required
+                    />
+                  </label>
+                </div>
+
+                <label>
+                  Istruzioni / note
+                  <textarea
+                    value={planMealForm.instructions}
+                    onChange={(event) => updatePlanMealField("instructions", event.target.value)}
+                    placeholder="Note facoltative sulla preparazione"
+                    rows={2}
+                  />
+                </label>
+
+                <div className="nutrition-items-heading">
+                  <span>Alimenti del pasto</span>
+                  <button type="button" className="nutrition-secondary" onClick={addPlanItemRow}>
+                    + Aggiungi alimento
                   </button>
                 </div>
+
+                {planMealForm.items.map((item, index) => (
+                  <div className="nutrition-item-row" key={index}>
+                    <input
+                      value={item.food_name}
+                      onChange={(event) => updatePlanItemDraft(index, "food_name", event.target.value)}
+                      placeholder="Alimento"
+                    />
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={item.quantity_g}
+                      onChange={(event) => updatePlanItemDraft(index, "quantity_g", event.target.value)}
+                      placeholder="g"
+                    />
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={item.calories}
+                      onChange={(event) => updatePlanItemDraft(index, "calories", event.target.value)}
+                      placeholder="kcal"
+                    />
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      value={item.protein_g}
+                      onChange={(event) => updatePlanItemDraft(index, "protein_g", event.target.value)}
+                      placeholder="P g"
+                    />
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      value={item.carbs_g}
+                      onChange={(event) => updatePlanItemDraft(index, "carbs_g", event.target.value)}
+                      placeholder="C g"
+                    />
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      value={item.fat_g}
+                      onChange={(event) => updatePlanItemDraft(index, "fat_g", event.target.value)}
+                      placeholder="F g"
+                    />
+                    {planMealForm.items.length > 1 && (
+                      <button
+                        type="button"
+                        className="nutrition-item-remove"
+                        onClick={() => removePlanItemRow(index)}
+                        aria-label="Rimuovi alimento"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
                 ))}
-              </>
+
+                <div className="nutrition-form-actions">
+                  <button
+                    type="button"
+                    className="nutrition-secondary"
+                    onClick={() => setShowPlanMealForm(false)}
+                  >
+                    Annulla
+                  </button>
+                  <button type="submit" className="nutrition-primary" disabled={savingPlanMeal}>
+                    {savingPlanMeal ? "Salvataggio..." : "Salva pasto"}
+                  </button>
+                </div>
+              </form>
             )}
+
+            <div className="nutrition-plan-preview__footer">
+              <button
+                type="button"
+                className="nutrition-secondary"
+                disabled={!planPreview.planDayId}
+                onClick={openNewPlanMeal}
+              >
+                + Pasto per {planPreview.weekdayLabel}
+              </button>
+              {planPreview.meals.length > 0 && (
+                <button
+                  type="button"
+                  className="nutrition-primary"
+                  disabled={copyingAllDay}
+                  onClick={() => void copyAllPlanMealsToDiary()}
+                >
+                  {copyingAllDay ? "Aggiungo..." : "Copia tutto nel diario"}
+                </button>
+              )}
+            </div>
           </details>
         )}
       </div>
