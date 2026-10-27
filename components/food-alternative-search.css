@@ -8,6 +8,7 @@
 
 .food-alt__header {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
@@ -35,6 +36,19 @@
   margin: 10px 0 0;
   color: var(--ink-muted);
   font-size: 0.82rem;
+}
+
+.food-alt__status--error {
+  color: var(--ink-red);
+}
+
+.food-alt__retry {
+  border: 0;
+  background: none;
+  color: var(--ink-green);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
 }
 
 .food-alt__list {

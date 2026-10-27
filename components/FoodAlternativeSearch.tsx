@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import type { FoodSearchResult } from "@/app/api/food-search/route";
 import { round } from "@/lib/nutrition";
 import "./food-alternative-search.css";
@@ -87,14 +87,28 @@ export default function FoodAlternativeSearch({ original, onCancel, onReplace }:
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // null = nessun errore, altrimenti messaggio da mostrare al posto di "nessun risultato":
+  // il servizio di ricerca alimenti ha un suo limite di richieste al minuto,
+  // quindi non va ritentato in automatico, solo su azione esplicita dell'utente.
+  const [serviceError, setServiceError] = useState<string | null>(null);
 
   async function runSearch(trimmed: string) {
+    if (trimmed.length < 2) return;
+
     setLoading(true);
+    setServiceError(null);
 
     try {
       const response = await fetch(`/api/food-search?q=${encodeURIComponent(trimmed)}`);
-      const data = (await response.json()) as { results?: FoodSearchResult[] };
+      const data = (await response.json()) as { results?: FoodSearchResult[]; error?: string };
+
+      if (!response.ok) {
+        setCandidates([]);
+        setServiceError(
+          "Il database alimentare è momentaneamente non raggiungibile. Riprova tra poco.",
+        );
+        return;
+      }
 
       const ranked = (data.results ?? [])
         .map((result) => buildCandidate(original, result))
@@ -104,6 +118,9 @@ export default function FoodAlternativeSearch({ original, onCancel, onReplace }:
       setCandidates(ranked);
     } catch {
       setCandidates([]);
+      setServiceError(
+        "Il database alimentare è momentaneamente non raggiungibile. Riprova tra poco.",
+      );
     } finally {
       setLoading(false);
       setSearched(true);
@@ -117,35 +134,34 @@ export default function FoodAlternativeSearch({ original, onCancel, onReplace }:
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function handleChange(nextValue: string) {
-    setQuery(nextValue);
-
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-
-    const trimmed = nextValue.trim();
-
-    if (trimmed.length < 2) {
-      setCandidates([]);
-      setSearched(false);
-      return;
-    }
-
-    debounceRef.current = setTimeout(() => void runSearch(trimmed), 350);
+  // Niente più ricerca a ogni tasto premuto: OpenFoodFacts limita la ricerca
+  // a 10 richieste/min per IP e sconsiglia esplicitamente il search-as-you-type
+  // ("you would be blocked very quickly"). Si cerca solo su invio/pulsante.
+  function handleSubmit(event: FormEvent) {
+    event.preventDefault();
+    void runSearch(query.trim());
   }
 
   return (
     <div className="food-alt">
-      <div className="food-alt__header">
+      <form className="food-alt__header" onSubmit={handleSubmit}>
         <input
           autoFocus
           value={query}
-          onChange={(event) => handleChange(event.target.value)}
+          onChange={(event) => setQuery(event.target.value)}
           placeholder="Cerca un alimento alternativo..."
         />
+        <button
+          type="submit"
+          className="nutrition-chip"
+          disabled={loading || query.trim().length < 2}
+        >
+          Cerca
+        </button>
         <button type="button" className="nutrition-chip" onClick={onCancel}>
           Annulla
         </button>
-      </div>
+      </form>
 
       <p className="food-alt__hint">
         Originale: {round(original.quantity_g)} g · {round(original.calories)} kcal (P{" "}
@@ -156,7 +172,16 @@ export default function FoodAlternativeSearch({ original, onCancel, onReplace }:
 
       {loading && <p className="food-alt__status">Cerco alternative...</p>}
 
-      {!loading && searched && candidates.length === 0 && (
+      {!loading && serviceError && (
+        <p className="food-alt__status food-alt__status--error">
+          {serviceError}{" "}
+          <button type="button" className="food-alt__retry" onClick={() => void runSearch(query.trim())}>
+            Riprova
+          </button>
+        </p>
+      )}
+
+      {!loading && !serviceError && searched && candidates.length === 0 && (
         <p className="food-alt__status">
           Nessuna alternativa trovata con dati nutrizionali sufficienti.
         </p>

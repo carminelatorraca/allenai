@@ -27,11 +27,41 @@ type OffProduct = {
 
 const USER_AGENT = "AllenAI-TrainLog/1.0 (uso personale, no contatti pubblici)";
 
+// OpenFoodFacts limita la ricerca a 10 richieste/min per IP e sconsiglia
+// esplicitamente di usarla per un search-as-you-type. Questa cache tiene le
+// risposte per query normalizzata finché l'istanza serverless resta "calda":
+// query comuni ("pollo", "riso"...) cercate da utenti diversi nello stesso
+// periodo non toccano più OpenFoodFacts a ogni richiesta.
+const CACHE_TTL_MS = 10 * 60 * 1000;
+const MAX_CACHE_ENTRIES = 200;
+
+type CacheEntry = { results: FoodSearchResult[]; expiresAt: number };
+
+const searchCache = new Map<string, CacheEntry>();
+
+function pruneCache() {
+  const now = Date.now();
+  for (const [key, entry] of searchCache) {
+    if (entry.expiresAt <= now) searchCache.delete(key);
+  }
+  if (searchCache.size > MAX_CACHE_ENTRIES) {
+    const oldestKey = searchCache.keys().next().value;
+    if (oldestKey !== undefined) searchCache.delete(oldestKey);
+  }
+}
+
 export async function GET(request: NextRequest) {
   const query = request.nextUrl.searchParams.get("q")?.trim();
 
   if (!query || query.length < 2) {
     return NextResponse.json({ results: [] });
+  }
+
+  const cacheKey = query.toLowerCase();
+  const cached = searchCache.get(cacheKey);
+
+  if (cached && cached.expiresAt > Date.now()) {
+    return NextResponse.json({ results: cached.results });
   }
 
   const url = new URL("https://world.openfoodfacts.org/api/v2/search");
@@ -76,6 +106,9 @@ export async function GET(request: NextRequest) {
       .filter((item): item is FoodSearchResult => item !== null)
       .filter((item) => item.calories_100g !== null)
       .slice(0, 10);
+
+    pruneCache();
+    searchCache.set(cacheKey, { results, expiresAt: Date.now() + CACHE_TTL_MS });
 
     return NextResponse.json({ results });
   } catch (error) {
