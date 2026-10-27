@@ -214,6 +214,7 @@ export default function WorkoutsPage() {
   const mountedRef = useRef(true);
   const savingSetIdsRef = useRef(new Set<string>());
   const savePromisesRef = useRef<Record<string, Promise<void>>>({});
+  const lastPersistedDraftRef = useRef<Record<string, SetDraft | undefined>>({});
   const saveErrorsRef = useRef<Record<string, string>>({});
   const urlDayRef = useRef<string | null>(null);
   const userNavigatedRef = useRef(false);
@@ -961,12 +962,15 @@ export default function WorkoutsPage() {
   }
 
   async function saveSet(setId: string): Promise<void> {
-    // Se il salvataggio è già attivo, chi lo invoca può attenderne la Promise.
+    // Se il salvataggio è già attivo, chi lo invoca ne attende la Promise e
+    // poi ricontrolla: quel salvataggio ha scritto solo il draft che aveva
+    // quando è partito, quindi eventuali modifiche digitate nel frattempo
+    // (es. cambi campo prima che l'autosave precedente sia tornato) vanno
+    // ripescate qui sotto invece di essere scartate in silenzio.
     const existingPromise = savePromisesRef.current[setId];
 
     if (existingPromise) {
       await existingPromise;
-      return;
     }
 
     const uid = userIdRef.current;
@@ -975,13 +979,18 @@ export default function WorkoutsPage() {
 
     if (!uid || !session || !draft) return;
 
+    if (draft === lastPersistedDraftRef.current[setId]) {
+      // Niente di nuovo rispetto a quanto già scritto su Supabase.
+      return;
+    }
+
     const reps = draft.reps.trim() === "" ? null : Number(draft.reps);
     const weight = draft.weight_kg.trim() === "" ? null : Number(draft.weight_kg);
     const rpe = draft.rpe.trim() === "" ? null : Number(draft.rpe);
 
     if (
-      (reps !== null && (!Number.isInteger(reps) || reps < 0)) ||
-      (weight !== null && (!Number.isFinite(weight) || weight < 0)) ||
+      (reps !== null && (!Number.isInteger(reps) || reps < 0 || reps > 300)) ||
+      (weight !== null && (!Number.isFinite(weight) || weight < 0 || weight > 500)) ||
       (rpe !== null && (!Number.isFinite(rpe) || rpe < 1 || rpe > 10))
     ) {
       setSetError(setId, "Controlla i valori inseriti.");
@@ -1010,6 +1019,8 @@ export default function WorkoutsPage() {
           .single();
 
         if (error) throw error;
+
+        lastPersistedDraftRef.current[setId] = draft;
 
         if (mountedRef.current) {
           setSets((prev) =>
@@ -1105,6 +1116,15 @@ export default function WorkoutsPage() {
 
     savePromisesRef.current[setId] = savePromise;
     await savePromise;
+
+    // Se mentre questo salvataggio era in corso sono arrivate altre
+    // modifiche (un altro campo, un altro giro di debounce), recuperale
+    // subito invece di aspettare il prossimo blur/timer: altrimenti
+    // restano solo nello stato locale e si perdono se l'utente cambia
+    // giornata o esce dalla pagina prima che scattino.
+    if (latestDrafts.current[setId] !== draft) {
+      return saveSet(setId);
+    }
   }
 
   /*
@@ -1657,7 +1677,9 @@ export default function WorkoutsPage() {
                                 <input
                                   type="number"
                                   min="0"
+                                  max="500"
                                   step="0.5"
+                                  autoComplete="off"
                                   value={draft.weight_kg}
                                   onChange={(event) =>
                                     updateDraft(set.id, "weight_kg", event.target.value)
@@ -1671,7 +1693,9 @@ export default function WorkoutsPage() {
                                 <input
                                   type="number"
                                   min="0"
+                                  max="300"
                                   step="1"
+                                  autoComplete="off"
                                   value={draft.reps}
                                   onChange={(event) =>
                                     updateDraft(set.id, "reps", event.target.value, {
