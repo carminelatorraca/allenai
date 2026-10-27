@@ -138,6 +138,21 @@ function compareSessionsNewestFirst(a: Session, b: Session) {
   );
 }
 
+function activityLabel(type: string | null | undefined) {
+  switch (type) {
+    case "swimming":
+      return "Nuoto";
+    case "running":
+      return "Corsa";
+    case "cycling":
+      return "Bici";
+    case "cardio":
+      return "Cardio";
+    default:
+      return "Attività";
+  }
+}
+
 function findLogicalDayIndex(days: TrainingDay[], target: TrainingDay) {
   if (target.day_code) {
     const byCode = days.findIndex((day) => day.day_code === target.day_code);
@@ -159,6 +174,12 @@ export default function WorkoutsPage() {
   const [mesocycles, setMesocycles] = useState<MesocycleSummary[]>([]);
   const [mesocycleIndex, setMesocycleIndex] = useState(0);
   const [expandedExerciseId, setExpandedExerciseId] = useState<string | null>(null);
+  // Esercizi programmati per la giornata selezionata quando non esiste
+  // ancora una sessione: mostra la stessa struttura di una sessione reale,
+  // ma vuota, cosi' muoversi tra mesociclo/settimana/giorno rende sempre
+  // visibile "cosa fare" anche prima di iniziare a registrare.
+  const [previewExercises, setPreviewExercises] = useState<Prescription[]>([]);
+  const [previewLoading, setPreviewLoading] = useState(false);
 
   const [activeSession, setActiveSession] = useState<Session | null>(null);
   const [exercises, setExercises] = useState<SessionExercise[]>([]);
@@ -202,6 +223,7 @@ export default function WorkoutsPage() {
   const urlDayRef = useRef<string | null>(null);
   const userNavigatedRef = useRef(false);
   const mesocycleIndexInitRef = useRef(false);
+  const daySyncTokenRef = useRef(0);
 
   const showError = (message: string) => {
     setErrorMessage(message);
@@ -708,6 +730,88 @@ export default function WorkoutsPage() {
       mesocycleIndexInitRef.current = true;
     }
   }, [mesocycles, days]);
+
+  /*
+   * Tiene il contenuto sotto il selettore sempre coerente con la giornata
+   * scelta (mesociclo -> settimana -> giorno): se esiste già una sessione
+   * per quella giornata la apre (valorizzata se già allenata), altrimenti
+   * carica gli esercizi programmati per mostrarli come anteprima vuota.
+   */
+  useEffect(() => {
+    if (loading || !userId || !selectedDay) return;
+
+    const uid = userId;
+    const token = ++daySyncTokenRef.current;
+
+    const existing = sessions
+      .filter((session) => session.mesocycle_day_id === selectedDay)
+      .sort(compareSessionsNewestFirst)[0];
+
+    if (existing) {
+      if (activeSessionRef.current?.id !== existing.id) {
+        void openSession(existing, uid);
+      }
+      return;
+    }
+
+    void (async () => {
+      if (activeSessionRef.current) {
+        try {
+          await flushPendingSaves();
+        } catch (err) {
+          if (token !== daySyncTokenRef.current) return;
+          showError(
+            err instanceof Error
+              ? err.message
+              : "Alcune serie non sono state salvate. Controlla gli errori prima di cambiare giornata.",
+          );
+          setSelectedDay(activeSessionRef.current.mesocycle_day_id ?? "");
+          return;
+        }
+
+        if (token !== daySyncTokenRef.current) return;
+
+        activeSessionRef.current = null;
+        setActiveSession(null);
+        setExercises([]);
+        setSets([]);
+        setDrafts({});
+        latestDrafts.current = {};
+        saveErrorsRef.current = {};
+        setSaveErrors({});
+      }
+
+      const day = days.find((item) => item.id === selectedDay);
+
+      if (!day || (day.activity_type && day.activity_type !== "gym")) {
+        if (token === daySyncTokenRef.current) setPreviewExercises([]);
+        return;
+      }
+
+      setPreviewLoading(true);
+
+      try {
+        const { data, error } = await supabase
+          .from("exercise_prescriptions")
+          .select("*")
+          .eq("user_id", uid)
+          .eq("mesocycle_day_id", selectedDay)
+          .order("sort_order", { ascending: true });
+
+        if (error) throw error;
+        if (token === daySyncTokenRef.current) {
+          setPreviewExercises((data ?? []) as Prescription[]);
+        }
+      } catch {
+        if (token === daySyncTokenRef.current) setPreviewExercises([]);
+      } finally {
+        if (token === daySyncTokenRef.current) setPreviewLoading(false);
+      }
+    })();
+  // openSession/flushPendingSaves are stable across renders (refs/function
+  // declarations), including them would only cause spurious re-runs.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDay, days, sessions, userId, loading]);
 
   async function stepMesocycle(direction: 1 | -1) {
     if (!userId || busy) return;
@@ -1220,35 +1324,6 @@ export default function WorkoutsPage() {
     }
   }
 
-  async function closeSession() {
-    if (busy) return;
-
-    setBusy(true);
-    setErrorMessage("");
-    setSuccessMessage("");
-
-    try {
-      await flushPendingSaves();
-
-      activeSessionRef.current = null;
-      setActiveSession(null);
-      setExercises([]);
-      setSets([]);
-      setDrafts({});
-      latestDrafts.current = {};
-      saveErrorsRef.current = {};
-      setSaveErrors({});
-    } catch (err) {
-      showError(
-        err instanceof Error
-          ? err.message
-          : "Impossibile chiudere la sessione perché ci sono salvataggi in sospeso.",
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
-
   async function deleteSession(session: Session) {
     if (!userId) return;
 
@@ -1389,6 +1464,101 @@ export default function WorkoutsPage() {
           </div>
         )}
 
+        <section className="workouts-panel">
+          <p className="workouts-eyebrow">PIANO DI ALLENAMENTO</p>
+          <h2>Scegli la giornata</h2>
+
+          <div className="workouts-form">
+            {mesocycles.length > 0 && (
+              <div className="workouts-mesocycle-pager">
+                <button
+                  type="button"
+                  className="workouts-pager-arrow"
+                  onClick={() => void stepMesocycle(-1)}
+                  disabled={busy || mesocycleIndex <= 0}
+                  aria-label="Mesociclo precedente"
+                >
+                  <ChevronLeftIcon size={18} />
+                </button>
+
+                <div className="workouts-mesocycle-pager__label">
+                  <span className="workouts-mesocycle-pager__eyebrow">
+                    Mesociclo {mesocycleIndex + 1}
+                  </span>
+                  <strong>{mesocycles[mesocycleIndex]?.name || "Senza nome"}</strong>
+                  <span className="workouts-mesocycle-pager__count">
+                    {mesocycleIndex + 1} / {mesocycles.length}
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  className="workouts-pager-arrow"
+                  onClick={() => void stepMesocycle(1)}
+                  disabled={busy || mesocycleIndex >= mesocycles.length - 1}
+                  aria-label="Mesociclo successivo"
+                >
+                  <ChevronRightIcon size={18} />
+                </button>
+              </div>
+            )}
+
+            {pickerDayCycle.length > 0 && (
+              <div className="workouts-day-tabs" role="tablist" aria-label="Giornata">
+                {pickerDayCycle.map((day, index) => (
+                  <button
+                    key={day.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={index === pickerLogicalIndex}
+                    className={`workouts-day-tab${
+                      index === pickerLogicalIndex ? " workouts-day-tab--active" : ""
+                    }`}
+                    onClick={() => selectPickerDayTab(index)}
+                  >
+                    {day.day_code || day.title}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {selectedDayInfo && pickerWeekNumbers.length > 0 && (
+              <div className="workouts-week-pager">
+                <button
+                  type="button"
+                  className="workouts-pager-arrow workouts-pager-arrow--small"
+                  onClick={() => stepPickerWeek(-1)}
+                  disabled={pickerWeekIndex <= 0}
+                  aria-label="Settimana precedente"
+                >
+                  <ChevronLeftIcon size={16} />
+                </button>
+
+                <span>
+                  Settimana {selectedDayInfo.week_number} · Sessione {pickerWeekIndex + 1}
+                  {selectedDayInfo.title && ` · ${selectedDayInfo.title}`}
+                </span>
+
+                <button
+                  type="button"
+                  className="workouts-pager-arrow workouts-pager-arrow--small"
+                  onClick={() => stepPickerWeek(1)}
+                  disabled={pickerWeekIndex >= pickerWeekNumbers.length - 1}
+                  aria-label="Settimana successiva"
+                >
+                  <ChevronRightIcon size={16} />
+                </button>
+              </div>
+            )}
+          </div>
+
+          {!days.length && (
+            <p className="workouts-empty">
+              Nessuna giornata disponibile in un mesociclo attivo. Verifica il tuo piano di allenamento.
+            </p>
+          )}
+        </section>
+
         {activeSession ? (
           <section className="workouts-panel">
             <div className="workouts-panel-heading">
@@ -1407,28 +1577,12 @@ export default function WorkoutsPage() {
                 <h2>{activeSession.title}</h2>
                 <p>{formatDate(activeSession.performed_at)}</p>
               </div>
-
-              <button
-                className="workouts-button-secondary"
-                onClick={() => void closeSession()}
-                disabled={busy}
-              >
-                {busy ? "Salvataggio…" : "← Elenco"}
-              </button>
             </div>
 
             {isCardioSession ? (
               <div className="workouts-cardio-log">
                 <p className="workouts-cardio-log__type">
-                  {activeDay?.activity_type === "swimming"
-                    ? "Nuoto"
-                    : activeDay?.activity_type === "running"
-                      ? "Corsa"
-                      : activeDay?.activity_type === "cycling"
-                        ? "Bici"
-                        : activeDay?.activity_type === "cardio"
-                          ? "Cardio"
-                          : "Attività"}
+                  {activityLabel(activeDay?.activity_type)}
                   {activeDay?.duration_minutes &&
                     ` · programmati ${activeDay.duration_minutes} min${activeDay.intensity ? ` · intensità ${activeDay.intensity}` : ""}`}
                 </p>
@@ -1664,182 +1818,130 @@ export default function WorkoutsPage() {
             )}
           </section>
         ) : (
-          <>
-            <section className="workouts-panel">
-              <p className="workouts-eyebrow">NUOVA SESSIONE</p>
-              <h2>Inizia un allenamento</h2>
+          <section className="workouts-panel">
+            <p className="workouts-eyebrow">SESSIONE NON INIZIATA</p>
+            <h2>{selectedDayInfo?.title ?? "Allenamento"}</h2>
+
+            {selectedDayInfo?.activity_type && selectedDayInfo.activity_type !== "gym" ? (
               <p className="workouts-description">
-                Seleziona una giornata del mesociclo attivo. Gli esercizi verranno copiati nella sessione.
+                {activityLabel(selectedDayInfo.activity_type)}
+                {selectedDayInfo.duration_minutes &&
+                  ` · programmati ${selectedDayInfo.duration_minutes} min`}
+                {selectedDayInfo.intensity && ` · intensità ${selectedDayInfo.intensity}`}
+                . Non hai ancora registrato questa sessione.
               </p>
+            ) : previewLoading ? (
+              <p className="workouts-description">Caricamento esercizi programmati...</p>
+            ) : previewExercises.length > 0 ? (
+              <>
+                <p className="workouts-description">
+                  Non hai ancora registrato questa sessione. Esercizi programmati:
+                </p>
 
-              <div className="workouts-form">
-                {mesocycles.length > 0 && (
-                  <div className="workouts-mesocycle-pager">
-                    <button
-                      type="button"
-                      className="workouts-pager-arrow"
-                      onClick={() => void stepMesocycle(-1)}
-                      disabled={busy || mesocycleIndex <= 0}
-                      aria-label="Mesociclo precedente"
-                    >
-                      <ChevronLeftIcon size={18} />
-                    </button>
+                {previewExercises.map((exercise) => (
+                  <article className="workouts-exercise" key={exercise.id}>
+                    <div className="workouts-exercise-summary">
+                      <span className="workouts-exercise-check" aria-hidden="true" />
 
-                    <div className="workouts-mesocycle-pager__label">
-                      <span className="workouts-mesocycle-pager__eyebrow">
-                        Mesociclo {mesocycleIndex + 1}
-                      </span>
-                      <strong>{mesocycles[mesocycleIndex]?.name || "Senza nome"}</strong>
-                      <span className="workouts-mesocycle-pager__count">
-                        {mesocycleIndex + 1} / {mesocycles.length}
+                      <span className="workouts-exercise-summary__text">
+                        <strong>{exercise.exercise_name}</strong>
+                        <span>
+                          {exercise.sets ?? "—"} serie · {exercise.reps_min ?? "—"}–
+                          {exercise.reps_max ?? "—"} reps
+                          {exercise.target_weight_kg
+                            ? ` · target ${exercise.target_weight_kg} kg`
+                            : ""}
+                        </span>
                       </span>
                     </div>
+                  </article>
+                ))}
+              </>
+            ) : selectedDayInfo ? (
+              <p className="workouts-empty">
+                Nessun esercizio programmato per questa giornata. Verifica il tuo piano di allenamento.
+              </p>
+            ) : null}
 
-                    <button
-                      type="button"
-                      className="workouts-pager-arrow"
-                      onClick={() => void stepMesocycle(1)}
-                      disabled={busy || mesocycleIndex >= mesocycles.length - 1}
-                      aria-label="Mesociclo successivo"
-                    >
-                      <ChevronRightIcon size={18} />
-                    </button>
-                  </div>
-                )}
+            <div className="workouts-form">
+              <label>
+                Data allenamento
+                <input
+                  type="date"
+                  value={trainingDate}
+                  onChange={(event) => setTrainingDate(event.target.value)}
+                />
+              </label>
 
-                {pickerDayCycle.length > 0 && (
-                  <div className="workouts-day-tabs" role="tablist" aria-label="Giornata">
-                    {pickerDayCycle.map((day, index) => (
-                      <button
-                        key={day.id}
-                        type="button"
-                        role="tab"
-                        aria-selected={index === pickerLogicalIndex}
-                        className={`workouts-day-tab${
-                          index === pickerLogicalIndex ? " workouts-day-tab--active" : ""
-                        }`}
-                        onClick={() => selectPickerDayTab(index)}
-                      >
-                        {day.day_code || day.title}
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {selectedDayInfo && pickerWeekNumbers.length > 0 && (
-                  <div className="workouts-week-pager">
-                    <button
-                      type="button"
-                      className="workouts-pager-arrow workouts-pager-arrow--small"
-                      onClick={() => stepPickerWeek(-1)}
-                      disabled={pickerWeekIndex <= 0}
-                      aria-label="Settimana precedente"
-                    >
-                      <ChevronLeftIcon size={16} />
-                    </button>
-
-                    <span>
-                      Settimana {selectedDayInfo.week_number} · Sessione {pickerWeekIndex + 1}
-                      {selectedDayInfo.title && ` · ${selectedDayInfo.title}`}
-                    </span>
-
-                    <button
-                      type="button"
-                      className="workouts-pager-arrow workouts-pager-arrow--small"
-                      onClick={() => stepPickerWeek(1)}
-                      disabled={pickerWeekIndex >= pickerWeekNumbers.length - 1}
-                      aria-label="Settimana successiva"
-                    >
-                      <ChevronRightIcon size={16} />
-                    </button>
-                  </div>
-                )}
-
-                <label>
-                  Data allenamento
-                  <input
-                    type="date"
-                    value={trainingDate}
-                    onChange={(event) => setTrainingDate(event.target.value)}
-                  />
-                </label>
-
-                <button
-                  className="workouts-button-primary"
-                  disabled={!selectedDay || !trainingDate || busy}
-                  onClick={() => void startWorkout()}
-                >
-                  {busy ? "Avvio..." : "Inizia allenamento ↗"}
-                </button>
-              </div>
-
-              {!days.length && (
-                <p className="workouts-empty">
-                  Nessuna giornata disponibile in un mesociclo attivo. Verifica il tuo piano di allenamento.
-                </p>
-              )}
-            </section>
-
-            <section className="workouts-history">
-              <div className="workouts-history-heading">
-                <div>
-                  <p className="workouts-eyebrow">IL TUO PERCORSO</p>
-                  <h2>Storico sessioni</h2>
-                </div>
-                <span>{sessions.length} sessioni</span>
-              </div>
-
-              {sessions.length === 0 ? (
-                <div className="workouts-empty">
-                  Non hai ancora registrato allenamenti.
-                </div>
-              ) : (
-                <div className="workouts-history-list">
-                  {sessions.map((session) => {
-                    const status =
-                      displayStatuses[session.id] ??
-                      (session.status === "completed" ? "completed" : "not_started");
-
-                    const label =
-                      status === "completed"
-                        ? "Completato"
-                        : status === "partial"
-                          ? "Parziale"
-                          : "Non iniziato";
-
-                    return (
-                      <div className="workouts-history-item" key={session.id}>
-                        <button
-                          type="button"
-                          className="workouts-history-item__open"
-                          disabled={busy}
-                          onClick={() => userId && void openSession(session, userId)}
-                        >
-                          <div>
-                            <strong>{session.title}</strong>
-                            <span>{formatDate(session.performed_at)}</span>
-                          </div>
-                          <span className={`workouts-status ${status}`}>{label}</span>
-                          <span className="workouts-history-arrow">↗</span>
-                        </button>
-                        <button
-                          type="button"
-                          className="workouts-history-item__delete"
-                          disabled={busy || deletingSessionId === session.id}
-                          onClick={() => void deleteSession(session)}
-                          aria-label="Elimina sessione"
-                          title="Elimina sessione"
-                        >
-                          {deletingSessionId === session.id ? "…" : <TrashIcon size={16} />}
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </section>
-          </>
+              <button
+                className="workouts-button-primary"
+                disabled={!selectedDay || !trainingDate || busy}
+                onClick={() => void startWorkout()}
+              >
+                {busy ? "Avvio..." : "Inizia allenamento ↗"}
+              </button>
+            </div>
+          </section>
         )}
+
+        <section className="workouts-history">
+          <div className="workouts-history-heading">
+            <div>
+              <p className="workouts-eyebrow">IL TUO PERCORSO</p>
+              <h2>Storico sessioni</h2>
+            </div>
+            <span>{sessions.length} sessioni</span>
+          </div>
+
+          {sessions.length === 0 ? (
+            <div className="workouts-empty">
+              Non hai ancora registrato allenamenti.
+            </div>
+          ) : (
+            <div className="workouts-history-list">
+              {sessions.map((session) => {
+                const status =
+                  displayStatuses[session.id] ??
+                  (session.status === "completed" ? "completed" : "not_started");
+
+                const label =
+                  status === "completed"
+                    ? "Completato"
+                    : status === "partial"
+                      ? "Parziale"
+                      : "Non iniziato";
+
+                return (
+                  <div className="workouts-history-item" key={session.id}>
+                    <button
+                      type="button"
+                      className="workouts-history-item__open"
+                      disabled={busy}
+                      onClick={() => userId && void openSession(session, userId)}
+                    >
+                      <div>
+                        <strong>{session.title}</strong>
+                        <span>{formatDate(session.performed_at)}</span>
+                      </div>
+                      <span className={`workouts-status ${status}`}>{label}</span>
+                      <span className="workouts-history-arrow">↗</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="workouts-history-item__delete"
+                      disabled={busy || deletingSessionId === session.id}
+                      onClick={() => void deleteSession(session)}
+                      aria-label="Elimina sessione"
+                      title="Elimina sessione"
+                    >
+                      {deletingSessionId === session.id ? "…" : <TrashIcon size={16} />}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
       </div>
 
       {restTimer && (
