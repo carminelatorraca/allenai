@@ -6,7 +6,23 @@ import MiniLineChart from "./MiniLineChart";
 import "./weight-history.css";
 import "./progress-history.css";
 
-type WeightRow = { date: string; weight_kg: number };
+type Measurements = {
+  waist_cm: number | null;
+  hips_cm: number | null;
+  chest_cm: number | null;
+  arm_cm: number | null;
+  thigh_cm: number | null;
+};
+
+type WeightRow = Measurements & { date: string; weight_kg: number };
+
+const MEASUREMENT_FIELDS: { key: keyof Measurements; label: string }[] = [
+  { key: "waist_cm", label: "Vita" },
+  { key: "hips_cm", label: "Fianchi" },
+  { key: "chest_cm", label: "Torace" },
+  { key: "arm_cm", label: "Braccio" },
+  { key: "thigh_cm", label: "Coscia" },
+];
 
 function localDate() {
   const now = new Date();
@@ -35,6 +51,14 @@ export default function WeightHistory({ userId, onLatestWeightChange }: Props) {
   const [loading, setLoading] = useState(true);
   const [draftDate, setDraftDate] = useState(localDate());
   const [draftWeight, setDraftWeight] = useState("");
+  const [draftMeasurements, setDraftMeasurements] = useState<Record<keyof Measurements, string>>({
+    waist_cm: "",
+    hips_cm: "",
+    chest_cm: "",
+    arm_cm: "",
+    thigh_cm: "",
+  });
+  const [measurementsOpen, setMeasurementsOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -44,7 +68,7 @@ export default function WeightHistory({ userId, onLatestWeightChange }: Props) {
     async function load() {
       const { data, error: loadError } = await supabase
         .from("weight_logs")
-        .select("date,weight_kg")
+        .select("date,weight_kg,waist_cm,hips_cm,chest_cm,arm_cm,thigh_cm")
         .eq("user_id", userId)
         .order("date", { ascending: true });
 
@@ -76,20 +100,38 @@ export default function WeightHistory({ userId, onLatestWeightChange }: Props) {
     setError("");
 
     try {
-      const { error: saveError } = await supabase
-        .from("weight_logs")
-        .upsert(
-          { user_id: userId, date: draftDate, weight_kg: weight, updated_at: new Date().toISOString() },
-          { onConflict: "user_id,date" },
-        );
+      const existingForDate = entries.find((entry) => entry.date === draftDate);
+
+      // Un campo misura lasciato vuoto non deve azzerare un valore già
+      // salvato per la stessa data in un'altra sessione di modifica.
+      const measurements = MEASUREMENT_FIELDS.reduce<Measurements>((acc, field) => {
+        const raw = draftMeasurements[field.key].trim();
+        const parsed = Number(raw);
+        const valid = raw !== "" && Number.isFinite(parsed) && parsed > 0;
+        acc[field.key] = valid ? parsed : existingForDate?.[field.key] ?? null;
+        return acc;
+      }, { waist_cm: null, hips_cm: null, chest_cm: null, arm_cm: null, thigh_cm: null });
+
+      const { error: saveError } = await supabase.from("weight_logs").upsert(
+        {
+          user_id: userId,
+          date: draftDate,
+          weight_kg: weight,
+          ...measurements,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id,date" },
+      );
 
       if (saveError) throw saveError;
 
-      const next = [...entries.filter((entry) => entry.date !== draftDate), { date: draftDate, weight_kg: weight }].sort(
-        (a, b) => a.date.localeCompare(b.date),
-      );
+      const next = [
+        ...entries.filter((entry) => entry.date !== draftDate),
+        { date: draftDate, weight_kg: weight, ...measurements },
+      ].sort((a, b) => a.date.localeCompare(b.date));
       setEntries(next);
       setDraftWeight("");
+      setDraftMeasurements({ waist_cm: "", hips_cm: "", chest_cm: "", arm_cm: "", thigh_cm: "" });
 
       // Se la data salvata è la più recente, tiene sincronizzato il peso
       // "attuale" del profilo, usato altrove nell'app (macro, calorie).
@@ -137,6 +179,33 @@ export default function WeightHistory({ userId, onLatestWeightChange }: Props) {
         </button>
       </div>
 
+      <button
+        type="button"
+        className="weight-history__toggle-measurements"
+        onClick={() => setMeasurementsOpen((current) => !current)}
+      >
+        {measurementsOpen ? "− Nascondi misure corporee" : "+ Aggiungi misure corporee"}
+      </button>
+
+      {measurementsOpen && (
+        <div className="weight-history__measurements">
+          {MEASUREMENT_FIELDS.map((field) => (
+            <label key={field.key}>
+              {field.label} (cm)
+              <input
+                type="number"
+                min="0"
+                step="0.5"
+                value={draftMeasurements[field.key]}
+                onChange={(event) =>
+                  setDraftMeasurements((current) => ({ ...current, [field.key]: event.target.value }))
+                }
+              />
+            </label>
+          ))}
+        </div>
+      )}
+
       {error && <p className="weight-history__error">{error}</p>}
 
       {loading ? (
@@ -155,6 +224,10 @@ export default function WeightHistory({ userId, onLatestWeightChange }: Props) {
               const previous = reversed[index + 1];
               const delta = previous ? entry.weight_kg - previous.weight_kg : null;
 
+              const measurementText = MEASUREMENT_FIELDS.filter((field) => entry[field.key] !== null)
+                .map((field) => `${field.label} ${niceValue(entry[field.key] as number)} cm`)
+                .join(" · ");
+
               return (
                 <div className="progress-history__row" key={entry.date}>
                   <span className="progress-history__primary">{formatLongDate(entry.date)}</span>
@@ -167,6 +240,7 @@ export default function WeightHistory({ userId, onLatestWeightChange }: Props) {
                         {niceValue(delta)})
                       </span>
                     )}
+                    {measurementText && <> · {measurementText}</>}
                   </span>
                 </div>
               );
