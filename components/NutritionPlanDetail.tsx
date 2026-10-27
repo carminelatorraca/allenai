@@ -2,15 +2,13 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-import AppShell from "@/components/AppShell";
 import FoodSearchInput from "@/components/FoodSearchInput";
 import { SparklesIcon, UploadIcon } from "@/components/icons";
 import type { FoodSearchResult } from "@/app/api/food-search/route";
 import type { ExtractedMeal } from "@/lib/meal-plan-schema";
 import { SLOT_LABEL, SLOT_ORDER, num, round, sumMacros } from "@/lib/nutrition";
-import "../nutrition-plan.css";
+import "./nutrition-plan.css";
 import "./plan-detail.css";
 
 const WEEKDAY_LABEL = [
@@ -195,12 +193,12 @@ function parseNonNegative(value: string): number | null {
   return parsed;
 }
 
-export default function PlanDetail({
+export default function NutritionPlanDetail({
   planId,
-  embedded = false,
+  initialWeekday,
 }: {
   planId: string;
-  embedded?: boolean;
+  initialWeekday?: number;
 }) {
   const [userId, setUserId] = useState<string | null>(null);
   const [plan, setPlan] = useState<NutritionPlan | null>(null);
@@ -223,9 +221,10 @@ export default function PlanDetail({
   const [generateProgress, setGenerateProgress] = useState("");
   const pdfInputRef = useRef<HTMLInputElement>(null);
 
-  // Giorno indicato da ?day=N nell'URL (link diretto dal diario alimentare):
-  // apre e scrolla a quel giorno una sola volta, appena i giorni sono caricati.
-  const targetWeekdayRef = useRef<number | null>(null);
+  // Giorno indicato da initialWeekday (apertura dalla card "Cosa mangiare"
+  // del diario): apre e scrolla a quel giorno una sola volta, appena i
+  // giorni sono caricati.
+  const targetWeekdayRef = useRef<number | null>(initialWeekday ?? null);
   const scrolledToTargetRef = useRef(false);
   const dayElementsRef = useRef<Record<number, HTMLDetailsElement | null>>({});
   const [highlightWeekday, setHighlightWeekday] = useState<number | null>(null);
@@ -322,16 +321,6 @@ export default function PlanDetail({
       active = false;
     };
   }, [loadPlan]);
-
-  // Legge /nutrition/plan/[id]?day=N, passato dal diario alimentare per
-  // puntare direttamente al giorno della settimana che lo ha generato.
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const day = params.get("day");
-    if (day !== null && /^[0-6]$/.test(day)) {
-      targetWeekdayRef.current = Number(day);
-    }
-  }, []);
 
   useEffect(() => {
     if (targetWeekdayRef.current === null || !days.length || scrolledToTargetRef.current) return;
@@ -773,34 +762,21 @@ export default function PlanDetail({
   }
 
   if (loading) {
-    const loadingNode = <p className="nplan-loading">Caricamento piano...</p>;
-    return embedded ? loadingNode : <AppShell>{loadingNode}</AppShell>;
+    return <p className="nplan-loading">Caricamento piano...</p>;
   }
 
   if (!plan) {
-    const notFoundNode = (
+    return (
       <main className="nplan-page">
-        {!embedded && (
-          <Link className="nplan-secondary" href="/nutrition/plan">
-            ← Torna ai piani
-          </Link>
-        )}
         <p className="nplan-error" role="alert">
           {error || "Piano non trovato."}
         </p>
       </main>
     );
-    return embedded ? notFoundNode : <AppShell>{notFoundNode}</AppShell>;
   }
 
-  const detailBody = (
-      <main className={`nplan-page${embedded ? " pdetail-embedded" : ""}`}>
-        {!embedded && (
-          <Link className="nplan-secondary pdetail-back" href="/nutrition/plan">
-            ← Torna ai piani
-          </Link>
-        )}
-
+  return (
+      <main className="nplan-page pdetail-embedded">
         <section className="nplan-hero">
           <p className="nplan-eyebrow">PIANO ALIMENTARE</p>
           <h1>{plan.name}</h1>
@@ -1138,6 +1114,4 @@ export default function PlanDetail({
         </div>
       </main>
   );
-
-  return embedded ? detailBody : <AppShell>{detailBody}</AppShell>;
 }

@@ -29,7 +29,7 @@ export default function GenerateHubPage() {
             <span className="genhub-card__cta">Genera una scheda →</span>
           </Link>
 
-          <Link className="genhub-card" href="/nutrition/plan">
+          <Link className="genhub-card" href="/nutrition?plan=1">
             <div className="genhub-card__icon genhub-card__icon--nutrition" aria-hidden="true">
               <UtensilsIcon size={22} />
             </div>

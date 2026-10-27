@@ -8,6 +8,7 @@ import { supabase } from "@/lib/supabase";
 import AppShell from "@/components/AppShell";
 import FoodAlternativeSearch, { type ReplacementItem } from "@/components/FoodAlternativeSearch";
 import { CheckIcon, ChevronDownIcon, PencilIcon, TrashIcon } from "@/components/icons";
+import NutritionPlanModal from "@/components/NutritionPlanModal";
 import { getExtraDailyTrainingCalories } from "@/lib/activity";
 import {
   MEAL_STATUS_LABEL,
@@ -233,6 +234,7 @@ function NutritionPageInner() {
   const [copyingAllDay, setCopyingAllDay] = useState(false);
   const [swapSearchKey, setSwapSearchKey] = useState<string | null>(null);
   const [expandedMealId, setExpandedMealId] = useState<string | null>(null);
+  const [showPlanModal, setShowPlanModal] = useState(false);
   const [showPlanMealForm, setShowPlanMealForm] = useState(false);
   const [editingPlanMeal, setEditingPlanMeal] = useState<PlanPreviewMeal | null>(null);
   const [planMealForm, setPlanMealForm] = useState<PlanMealFormState>(emptyPlanMealForm);
@@ -742,6 +744,10 @@ function NutritionPageInner() {
       setUserId(data.user.id);
       setTodayKey(key);
       setSelectedDate(isValidDate ? requestedDate : key);
+
+      // Link diretto dal hub "Genera con AI" (/generate): apre subito la
+      // modale piani invece di richiedere altri due click.
+      if (searchParams.get("plan") === "1") setShowPlanModal(true);
     }
 
     void init();
@@ -1111,9 +1117,13 @@ function NutritionPageInner() {
             <p>Pianifica i pasti della giornata e registra cosa mangi davvero.</p>
           </div>
           <div className="nutrition-heading-actions">
-            <Link className="nutrition-button-secondary" href="/nutrition/plan">
+            <button
+              type="button"
+              className="nutrition-button-secondary"
+              onClick={() => setShowPlanModal(true)}
+            >
               I miei piani
-            </Link>
+            </button>
             <Link className="nutrition-button-secondary" href="/nutrition/calculator">
               Calcola fabbisogno
             </Link>
@@ -1488,9 +1498,9 @@ function NutritionPageInner() {
               Non hai ancora un piano nutrizionale. Creane uno per vedere qui cosa mangiare ogni
               giorno della settimana.
             </p>
-            <Link className="nutrition-secondary" href="/nutrition/plan">
+            <button type="button" className="nutrition-secondary" onClick={() => setShowPlanModal(true)}>
               Crea un piano
-            </Link>
+            </button>
           </div>
         )}
 
@@ -1505,9 +1515,13 @@ function NutritionPageInner() {
                 className="nutrition-plan-preview__actions"
                 onClick={(event) => event.stopPropagation()}
               >
-                <Link className="nutrition-secondary" href="/nutrition/plan">
+                <button
+                  type="button"
+                  className="nutrition-secondary"
+                  onClick={() => setShowPlanModal(true)}
+                >
                   AI, import, altri piani
-                </Link>
+                </button>
               </div>
               <ChevronDownIcon size={18} className="nutrition-plan-preview__chevron" />
             </summary>
@@ -1703,6 +1717,17 @@ function NutritionPageInner() {
           </details>
         )}
       </div>
+
+      {showPlanModal && userId && (
+        <NutritionPlanModal
+          userId={userId}
+          initialWeekday={effectiveWeekday}
+          onClose={() => {
+            setShowPlanModal(false);
+            void loadPlanPreview(userId, selectedDate, effectiveWeekday);
+          }}
+        />
+      )}
     </AppShell>
   );
 }
