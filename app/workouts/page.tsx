@@ -9,6 +9,8 @@ import { TimerIcon, TrashIcon } from "@/components/icons";
 import { estimateSessionCalories } from "@/lib/activity";
 import "./workouts.css";
 
+const REST_TIMER_STORAGE_KEY = "allenai.restTimer";
+
 type TrainingDay = {
   id: string;
   title: string;
@@ -163,8 +165,10 @@ export default function WorkoutsPage() {
   const [restTimer, setRestTimer] = useState<{
     exerciseName: string;
     totalSeconds: number;
-    secondsLeft: number;
+    endAt: number;
   } | null>(null);
+  const [restTimerNow, setRestTimerNow] = useState(() => Date.now());
+  const restTimerDoneRef = useRef(false);
 
   const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const latestDrafts = useRef<Record<string, SetDraft>>({});
@@ -482,26 +486,84 @@ export default function WorkoutsPage() {
     }
   }, []);
 
-  const restTimerActive = restTimer !== null && restTimer.secondsLeft > 0;
+  // Il tempo restante si calcola sempre dal timestamp di fine, non da un
+  // contatore decrementato a ogni tick: su mobile i tick di setInterval
+  // vengono sospesi in background, ma l'orologio reale no, quindi appena
+  // l'app torna in foreground il countdown mostra il valore corretto
+  // invece di restare fermo a quando è stata messa in background.
+  const restTimerSecondsLeft = restTimer
+    ? Math.max(0, Math.ceil((restTimer.endAt - restTimerNow) / 1000))
+    : 0;
 
   useEffect(() => {
-    if (!restTimerActive) return;
-
-    const id = setInterval(() => {
-      setRestTimer((current) => {
-        if (!current) return current;
-        const secondsLeft = Math.max(0, current.secondsLeft - 1);
-        if (secondsLeft === 0 && current.secondsLeft !== 0) {
-          if (typeof navigator !== "undefined" && "vibrate" in navigator) {
-            navigator.vibrate(300);
-          }
-        }
-        return { ...current, secondsLeft };
-      });
-    }, 1000);
-
+    if (!restTimer) return;
+    const id = setInterval(() => setRestTimerNow(Date.now()), 1000);
     return () => clearInterval(id);
-  }, [restTimerActive]);
+  }, [restTimer]);
+
+  useEffect(() => {
+    if (!restTimer) {
+      restTimerDoneRef.current = false;
+      return;
+    }
+    if (restTimerSecondsLeft === 0 && !restTimerDoneRef.current) {
+      restTimerDoneRef.current = true;
+      if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+        navigator.vibrate(300);
+      }
+    }
+  }, [restTimer, restTimerSecondsLeft]);
+
+  // Ricalcola subito il tempo restante quando l'app torna visibile, invece
+  // di aspettare il prossimo tick dell'intervallo (che su mobile può essere
+  // ritardato dopo una lunga sospensione in background).
+  useEffect(() => {
+    function handleVisible() {
+      if (document.visibilityState === "visible") setRestTimerNow(Date.now());
+    }
+    document.addEventListener("visibilitychange", handleVisible);
+    window.addEventListener("focus", handleVisible);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisible);
+      window.removeEventListener("focus", handleVisible);
+    };
+  }, []);
+
+  // Persiste il timer così sopravvive alla navigazione tra pagine, che
+  // smonta questo componente e ne perderebbe altrimenti lo stato.
+  useEffect(() => {
+    try {
+      if (restTimer) {
+        localStorage.setItem(REST_TIMER_STORAGE_KEY, JSON.stringify(restTimer));
+      } else {
+        localStorage.removeItem(REST_TIMER_STORAGE_KEY);
+      }
+    } catch {
+      // storage non disponibile (es. modalità privata): il timer resta solo in memoria.
+    }
+  }, [restTimer]);
+
+  // Ripristina un timer avviato prima di cambiare pagina. Uno scaduto da
+  // più di 5 minuti viene scartato invece di far ricomparire un "Recupero
+  // finito" vecchio e dimenticato.
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(REST_TIMER_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as {
+        exerciseName: string;
+        totalSeconds: number;
+        endAt: number;
+      };
+      if (parsed && typeof parsed.endAt === "number" && Date.now() - parsed.endAt < 5 * 60 * 1000) {
+        setRestTimer(parsed);
+      } else {
+        localStorage.removeItem(REST_TIMER_STORAGE_KEY);
+      }
+    } catch {
+      // ignora storage non disponibile
+    }
+  }, []);
 
   /*
    * Se non è stata passata una giornata nell'URL:
@@ -973,7 +1035,9 @@ export default function WorkoutsPage() {
 
   function startRestTimer(exerciseName: string, restSeconds: number | null) {
     const total = restSeconds && restSeconds > 0 ? restSeconds : 90;
-    setRestTimer({ exerciseName, totalSeconds: total, secondsLeft: total });
+    restTimerDoneRef.current = false;
+    setRestTimerNow(Date.now());
+    setRestTimer({ exerciseName, totalSeconds: total, endAt: Date.now() + total * 1000 });
   }
 
   function stopRestTimer() {
@@ -983,7 +1047,9 @@ export default function WorkoutsPage() {
   function adjustRestTimer(deltaSeconds: number) {
     setRestTimer((current) => {
       if (!current) return current;
-      return { ...current, secondsLeft: Math.max(0, current.secondsLeft + deltaSeconds) };
+      const secondsLeft = Math.max(0, Math.ceil((current.endAt - Date.now()) / 1000) + deltaSeconds);
+      restTimerDoneRef.current = secondsLeft === 0;
+      return { ...current, endAt: Date.now() + secondsLeft * 1000 };
     });
   }
 
@@ -1510,15 +1576,15 @@ export default function WorkoutsPage() {
       {restTimer && (
         <div
           className="workouts-rest-timer"
-          data-done={restTimer.secondsLeft === 0}
+          data-done={restTimerSecondsLeft === 0}
           role="status"
           aria-live="polite"
         >
           <div className="workouts-rest-timer__info">
             <span className="workouts-rest-timer__label">Recupero · {restTimer.exerciseName}</span>
             <span className="workouts-rest-timer__clock">
-              {String(Math.floor(restTimer.secondsLeft / 60)).padStart(2, "0")}:
-              {String(restTimer.secondsLeft % 60).padStart(2, "0")}
+              {String(Math.floor(restTimerSecondsLeft / 60)).padStart(2, "0")}:
+              {String(restTimerSecondsLeft % 60).padStart(2, "0")}
             </span>
           </div>
           <div className="workouts-rest-timer__actions">
@@ -1529,7 +1595,7 @@ export default function WorkoutsPage() {
               +15s
             </button>
             <button type="button" className="workouts-rest-timer__stop" onClick={stopRestTimer}>
-              {restTimer.secondsLeft === 0 ? "Chiudi" : "Salta"}
+              {restTimerSecondsLeft === 0 ? "Chiudi" : "Salta"}
             </button>
           </div>
         </div>
