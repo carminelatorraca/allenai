@@ -1,5 +1,6 @@
 import type { ExtractedMeal } from "@/lib/meal-plan-schema";
 import type { GeneratedWorkoutDay } from "@/lib/workout-plan-schema";
+import type { MealAlternativeDraft } from "@/lib/meal-alternatives-schema";
 
 export type AiProviderName = "gemini" | "claude" | "openai";
 
@@ -9,10 +10,15 @@ export type AiResult = { ok: true; meals: ExtractedMeal[] } | AiFailure;
 
 export type AiWorkoutResult = { ok: true; days: GeneratedWorkoutDay[] } | AiFailure;
 
+export type AiMealAlternativesResult =
+  | { ok: true; alternatives: MealAlternativeDraft[] }
+  | AiFailure;
+
 export interface AiProvider {
   extractMealPlanFromPdf(pdfBase64: string, prompt: string): Promise<AiResult>;
   generateMealPlan(prompt: string): Promise<AiResult>;
   generateWorkoutPlan(prompt: string): Promise<AiWorkoutResult>;
+  generateMealAlternatives(prompt: string): Promise<AiMealAlternativesResult>;
 }
 
 export function missingApiKeyFailure(envVar: string, hint: string): AiFailure {

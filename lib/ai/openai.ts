@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import { MEAL_PLAN_SCHEMA, type ExtractedMeal } from "@/lib/meal-plan-schema";
 import { WORKOUT_PLAN_SCHEMA, type GeneratedWorkoutDay } from "@/lib/workout-plan-schema";
+import { MEAL_ALTERNATIVES_SCHEMA, type MealAlternativeDraft } from "@/lib/meal-alternatives-schema";
 import {
   aiErrorFailure,
   aiErrorResult,
@@ -8,6 +9,7 @@ import {
   missingApiKeyResult,
   truncatedFailure,
   truncatedResult,
+  type AiMealAlternativesResult,
   type AiProvider,
   type AiResult,
   type AiWorkoutResult,
@@ -108,6 +110,51 @@ async function runStructuredWorkout(prompt: string): Promise<AiWorkoutResult> {
   }
 }
 
+async function runStructuredMealAlternatives(prompt: string): Promise<AiMealAlternativesResult> {
+  const apiKey = process.env.OPENAI_API_KEY;
+
+  if (!apiKey) {
+    return missingApiKeyFailure("OPENAI_API_KEY", "a pagamento, platform.openai.com");
+  }
+
+  try {
+    const client = new OpenAI({ apiKey });
+
+    const response = await client.responses.create({
+      model: MODEL,
+      input: [{ role: "user", content: prompt }],
+      max_output_tokens: 8000,
+      text: {
+        format: {
+          type: "json_schema",
+          name: "meal_alternatives",
+          schema: MEAL_ALTERNATIVES_SCHEMA,
+          strict: true,
+        },
+      },
+    });
+
+    if (response.status === "incomplete" && response.incomplete_details?.reason === "max_output_tokens") {
+      return truncatedFailure();
+    }
+
+    const text = response.output_text;
+    if (!text) {
+      return { ok: false, status: 502, code: "ai_error", message: "Risposta AI vuota." };
+    }
+
+    let parsed: { alternatives?: MealAlternativeDraft[] };
+    try {
+      parsed = JSON.parse(text) as { alternatives?: MealAlternativeDraft[] };
+    } catch {
+      return truncatedFailure();
+    }
+    return { ok: true, alternatives: parsed.alternatives ?? [] };
+  } catch (error) {
+    return aiErrorFailure(error, "Errore durante la chiamata a OpenAI.");
+  }
+}
+
 export const openaiProvider: AiProvider = {
   async extractMealPlanFromPdf(pdfBase64, prompt) {
     return runStructured([
@@ -131,5 +178,9 @@ export const openaiProvider: AiProvider = {
 
   async generateWorkoutPlan(prompt) {
     return runStructuredWorkout(prompt);
+  },
+
+  async generateMealAlternatives(prompt) {
+    return runStructuredMealAlternatives(prompt);
   },
 };

@@ -4,6 +4,7 @@
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import FoodSearchInput from "@/components/FoodSearchInput";
+import MealAlternatives, { type OriginalMealItem } from "@/components/MealAlternatives";
 import { SparklesIcon, UploadIcon } from "@/components/icons";
 import type { FoodSearchResult } from "@/app/api/food-search/route";
 import type { ExtractedMeal } from "@/lib/meal-plan-schema";
@@ -211,6 +212,7 @@ export default function NutritionPlanDetail({
 
   const [showMealForm, setShowMealForm] = useState(false);
   const [editingMeal, setEditingMeal] = useState<PlanMeal | null>(null);
+  const [altMealId, setAltMealId] = useState<string | null>(null);
   const [mealForm, setMealForm] = useState<MealForm>(emptyMealForm);
 
   const [importQueue, setImportQueue] = useState<ExtractedMeal[]>([]);
@@ -761,6 +763,41 @@ export default function NutritionPlanDetail({
     }
   }
 
+  async function replaceMealItems(meal: PlanMeal, items: OriginalMealItem[]) {
+    if (!userId) return;
+
+    setError("");
+    setNotice("");
+
+    try {
+      const { error: deleteItemsError } = await supabase
+        .from("nutrition_plan_meal_items")
+        .delete()
+        .eq("plan_meal_id", meal.id);
+
+      if (deleteItemsError) throw deleteItemsError;
+
+      if (items.length > 0) {
+        const { error: insertItemsError } = await supabase.from("nutrition_plan_meal_items").insert(
+          items.map((item, index) => ({
+            ...item,
+            plan_meal_id: meal.id,
+            user_id: userId,
+            sort_order: index,
+          })),
+        );
+
+        if (insertItemsError) throw insertItemsError;
+      }
+
+      setAltMealId(null);
+      setNotice(`Pasto "${meal.title}" sostituito con l'alternativa.`);
+      await loadPlan(userId, { silent: true });
+    } catch (err) {
+      setError(errorMessage(err));
+    }
+  }
+
   if (loading) {
     return <p className="nplan-loading">Caricamento piano...</p>;
   }
@@ -1090,12 +1127,28 @@ export default function NutritionPlanDetail({
                           </button>
                           <button
                             type="button"
+                            className="nplan-secondary"
+                            disabled={altMealId === meal.id}
+                            onClick={() => setAltMealId(meal.id)}
+                          >
+                            Alternative
+                          </button>
+                          <button
+                            type="button"
                             className="nplan-danger"
                             onClick={() => void deleteMeal(meal)}
                           >
                             Elimina
                           </button>
                         </div>
+
+                        {altMealId === meal.id && (
+                          <MealAlternatives
+                            original={{ title: meal.title, items: meal.items }}
+                            onReplace={(items) => void replaceMealItems(meal, items)}
+                            onClose={() => setAltMealId(null)}
+                          />
+                        )}
                       </article>
                     ))
                   )}

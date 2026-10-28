@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import AppShell from "@/components/AppShell";
 import FoodAlternativeSearch, { type ReplacementItem } from "@/components/FoodAlternativeSearch";
+import MealAlternatives, { type OriginalMealItem } from "@/components/MealAlternatives";
 import { CheckIcon, ChevronDownIcon, PencilIcon, TrashIcon } from "@/components/icons";
 import NutritionPlanModal from "@/components/NutritionPlanModal";
 import { getExtraDailyTrainingCalories } from "@/lib/activity";
@@ -233,6 +234,7 @@ function NutritionPageInner() {
   const [copyingMealId, setCopyingMealId] = useState<string | null>(null);
   const [copyingAllDay, setCopyingAllDay] = useState(false);
   const [swapSearchKey, setSwapSearchKey] = useState<string | null>(null);
+  const [altMealId, setAltMealId] = useState<string | null>(null);
   const [expandedMealId, setExpandedMealId] = useState<string | null>(null);
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [showPlanMealForm, setShowPlanMealForm] = useState(false);
@@ -654,6 +656,41 @@ function NutritionPageInner() {
 
       setSwapSearchKey(null);
       setNotice(`"${item.food_name}" sostituito con "${replacement.food_name}".`);
+      await loadDay(userId, selectedDate, { silent: true });
+    } catch (err) {
+      setError(errorMessage(err));
+    }
+  }
+
+  async function replaceMealItems(meal: PlannedMeal, items: OriginalMealItem[]) {
+    if (!userId) return;
+
+    setError("");
+    setNotice("");
+
+    try {
+      const { error: deleteItemsError } = await supabase
+        .from("planned_meal_items")
+        .delete()
+        .eq("meal_id", meal.id);
+
+      if (deleteItemsError) throw deleteItemsError;
+
+      if (items.length > 0) {
+        const { error: insertItemsError } = await supabase.from("planned_meal_items").insert(
+          items.map((item, index) => ({
+            ...item,
+            meal_id: meal.id,
+            user_id: userId,
+            sort_order: index,
+          })),
+        );
+
+        if (insertItemsError) throw insertItemsError;
+      }
+
+      setAltMealId(null);
+      setNotice(`Pasto "${meal.title}" sostituito con l'alternativa.`);
       await loadDay(userId, selectedDate, { silent: true });
     } catch (err) {
       setError(errorMessage(err));
@@ -1475,12 +1512,28 @@ function NutritionPageInner() {
                           </button>
                           <button
                             type="button"
+                            className="nutrition-chip"
+                            disabled={altMealId === meal.id}
+                            onClick={() => setAltMealId(meal.id)}
+                          >
+                            Alternative
+                          </button>
+                          <button
+                            type="button"
                             className="nutrition-chip nutrition-chip--danger"
                             onClick={() => void deleteMeal(meal)}
                           >
                             Elimina
                           </button>
                         </div>
+
+                        {altMealId === meal.id && (
+                          <MealAlternatives
+                            original={{ title: meal.title, items: meal.items }}
+                            onReplace={(items) => void replaceMealItems(meal, items)}
+                            onClose={() => setAltMealId(null)}
+                          />
+                        )}
                       </div>
                     )}
                   </article>

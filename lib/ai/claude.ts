@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { MEAL_PLAN_SCHEMA, type ExtractedMeal } from "@/lib/meal-plan-schema";
 import { WORKOUT_PLAN_SCHEMA, type GeneratedWorkoutDay } from "@/lib/workout-plan-schema";
+import { MEAL_ALTERNATIVES_SCHEMA, type MealAlternativeDraft } from "@/lib/meal-alternatives-schema";
 import {
   aiErrorFailure,
   aiErrorResult,
@@ -8,6 +9,7 @@ import {
   missingApiKeyResult,
   truncatedFailure,
   truncatedResult,
+  type AiMealAlternativesResult,
   type AiProvider,
   type AiResult,
   type AiWorkoutResult,
@@ -110,6 +112,52 @@ async function runStructuredWorkout(prompt: string): Promise<AiWorkoutResult> {
   }
 }
 
+async function runStructuredMealAlternatives(prompt: string): Promise<AiMealAlternativesResult> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+
+  if (!apiKey) {
+    return missingApiKeyFailure("ANTHROPIC_API_KEY", "a pagamento, console.anthropic.com");
+  }
+
+  try {
+    const client = new Anthropic({ apiKey });
+
+    const response = await client.messages.create({
+      model: MODEL,
+      max_tokens: 8000,
+      thinking: { type: "adaptive" },
+      output_config: { format: { type: "json_schema", schema: MEAL_ALTERNATIVES_SCHEMA } },
+      messages: [{ role: "user", content: prompt }],
+    });
+
+    if (response.stop_reason === "refusal") {
+      return {
+        ok: false,
+        status: 502,
+        code: "ai_refusal",
+        message: "L'AI non è riuscita a elaborare questa richiesta.",
+      };
+    }
+
+    if (response.stop_reason === "max_tokens") return truncatedFailure();
+
+    const textBlock = response.content.find((block) => block.type === "text");
+    if (!textBlock || textBlock.type !== "text") {
+      return { ok: false, status: 502, code: "ai_error", message: "Risposta AI priva di contenuto testuale." };
+    }
+
+    let parsed: { alternatives?: MealAlternativeDraft[] };
+    try {
+      parsed = JSON.parse(textBlock.text) as { alternatives?: MealAlternativeDraft[] };
+    } catch {
+      return truncatedFailure();
+    }
+    return { ok: true, alternatives: parsed.alternatives ?? [] };
+  } catch (error) {
+    return aiErrorFailure(error, "Errore durante la chiamata a Claude.");
+  }
+}
+
 export const claudeProvider: AiProvider = {
   async extractMealPlanFromPdf(pdfBase64, prompt) {
     return runStructured([
@@ -127,5 +175,9 @@ export const claudeProvider: AiProvider = {
 
   async generateWorkoutPlan(prompt) {
     return runStructuredWorkout(prompt);
+  },
+
+  async generateMealAlternatives(prompt) {
+    return runStructuredMealAlternatives(prompt);
   },
 };
