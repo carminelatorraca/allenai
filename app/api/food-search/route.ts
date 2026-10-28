@@ -74,13 +74,31 @@ export async function GET(request: NextRequest) {
   );
 
   try {
-    const response = await fetch(url, {
-      headers: { "User-Agent": USER_AGENT },
-      signal: AbortSignal.timeout(8000),
-    });
+    // Secondo OpenFoodFacts (confermato dal loro staff su Slack), un 503 non
+    // indica di aver sfondato il rate limit (quello sarebbe un 429): è il loro
+    // server sotto carico per il traffico di altri crawler, quindi è un errore
+    // transitorio su cui vale la pena ritentare subito un paio di volte. Un
+    // 429 invece è un limite reale: ritentare lo peggiorerebbe solo, quindi si
+    // esce immediatamente e si lascia il retry alla pressione manuale lato utente.
+    const RETRYABLE_STATUSES = new Set([502, 503, 504]);
+    const RETRY_DELAYS_MS = [300, 800];
 
-    if (!response.ok) {
-      throw new Error(`OpenFoodFacts ha risposto con stato ${response.status}.`);
+    let response: Response | null = null;
+
+    for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt += 1) {
+      response = await fetch(url, {
+        headers: { "User-Agent": USER_AGENT },
+        signal: AbortSignal.timeout(8000),
+      });
+
+      if (response.ok || !RETRYABLE_STATUSES.has(response.status)) break;
+      if (attempt < RETRY_DELAYS_MS.length) {
+        await new Promise((resolve) => setTimeout(resolve, RETRY_DELAYS_MS[attempt]));
+      }
+    }
+
+    if (!response || !response.ok) {
+      throw new Error(`OpenFoodFacts ha risposto con stato ${response?.status}.`);
     }
 
     const data = (await response.json()) as { products?: OffProduct[] };
